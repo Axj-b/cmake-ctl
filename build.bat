@@ -1,5 +1,5 @@
 @echo off
-REM Build script for cmakectl proxy on Windows
+REM Build script for cmake-ctl proxy on Windows
 
 setlocal enabledelayedexpansion
 
@@ -25,13 +25,13 @@ if !errorlevel! neq 0 (
 )
 
 REM Copy executable to bin directory
-if exist "Release\cmakectl-proxy.exe" (
-    copy "Release\cmakectl-proxy.exe" "%SCRIPT_DIR%bin\cmakectl-proxy.exe"
-    echo Build complete: %SCRIPT_DIR%bin\cmakectl-proxy.exe
-) else if exist "cmakectl-proxy.exe" (
-    copy "cmakectl-proxy.exe" "%SCRIPT_DIR%bin\cmakectl-proxy.exe"
-    echo Build complete: %SCRIPT_DIR%bin\cmakectl-proxy.exe
+if exist "Release\cmake-ctl-proxy.exe" (
+    copy "Release\cmake-ctl-proxy.exe" "%SCRIPT_DIR%bin\cmake-ctl-proxy.exe"
+    echo Build complete: %SCRIPT_DIR%bin\cmake-ctl-proxy.exe
+) else if exist "cmake-ctl-proxy.exe" (
+    copy "cmake-ctl-proxy.exe" "%SCRIPT_DIR%bin\cmake-ctl-proxy.exe"
+    echo Build complete: %SCRIPT_DIR%bin\cmake-ctl-proxy.exe
 ) else (
-    echo Error: cmakectl-proxy.exe not found after build
+    echo Error: cmake-ctl-proxy.exe not found after build
     exit /b 1
 )

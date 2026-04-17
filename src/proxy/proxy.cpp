@@ -40,9 +40,12 @@ std::string get_home_dir() {
     return home ? std::string(home) : "";
 }
 
-// Utility: Get CMAKECTL_HOME
-std::string get_cmakectl_home() {
-    std::string env_home = get_env("CMAKECTL_HOME");
+// Utility: Resolve cmake-ctl home directory from env or defaults.
+std::string get_cmake_ctl_home() {
+    std::string env_home = get_env("CMAKE_CTL_HOME");
+    if (env_home.empty()) {
+        env_home = get_env("CMAKECTL_HOME");
+    }
     if (!env_home.empty()) {
         return env_home;
     }
@@ -50,9 +53,9 @@ std::string get_cmakectl_home() {
     // Fallback: use home directory
     std::string home = get_home_dir();
     if (!home.empty()) {
-        return home + "/.cmakectl";
+        return home + "/.cmake-ctl";
     }
-    return ".cmakectl";
+    return ".cmake-ctl";
 }
 
 // Discover source directory from -S flag or build directory
@@ -80,8 +83,8 @@ std::string discover_build_dir(const std::vector<std::string>& args) {
 // Emit event to NDJSON file
 void emit_event(const std::string& source_dir, const std::string& build_dir, 
                 const std::vector<std::string>& args) {
-    std::string cmakectl_home = get_cmakectl_home();
-    std::string events_dir = cmakectl_home + "/events";
+    std::string cmake_ctl_home = get_cmake_ctl_home();
+    std::string events_dir = cmake_ctl_home + "/events";
     std::string events_file = events_dir + "/cmake_invocations.ndjson";
     
     // Ensure directory exists
@@ -124,11 +127,11 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
     }
 }
 
-// Resolve cmake executable path from cmakectl managed versions
+// Resolve cmake executable path from cmake_ctl managed versions
 std::string resolve_cmake_executable() {
-    std::string cmakectl_home = get_cmakectl_home();
-    std::string versions_dir = cmakectl_home + "/versions";
-    std::string config_path = cmakectl_home + "/config.json";
+    std::string cmake_ctl_home = get_cmake_ctl_home();
+    std::string versions_dir = cmake_ctl_home + "/versions";
+    std::string config_path = cmake_ctl_home + "/config.json";
     
     // Try to read config.json to find the default version
     std::string default_version;
@@ -219,7 +222,7 @@ int main(int argc, char* argv[]) {
         
         // If they're the same, we'd be calling ourselves - that's recursion
         if (our_path == resolved_canonical) {
-            std::cerr << "Error: cmakectl proxy recursion detected" << std::endl;
+            std::cerr << "Error: cmake-ctl proxy recursion detected" << std::endl;
             return 1;
         }
     } catch (...) {
@@ -227,6 +230,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Set recursion guard for child processes
+    set_env("CMAKE_CTL_PROXY_ACTIVE", "1");
     set_env("CMAKECTL_PROXY_ACTIVE", "1");
     
     // Collect arguments (skip program name)
@@ -245,11 +249,11 @@ int main(int argc, char* argv[]) {
     // If using fallback "cmake", remove proxy bin from PATH to avoid recursion
     if (cmake_exe == "cmake") {
         std::string path = get_env("PATH");
-        // Remove cmakectl bin paths from PATH
-        size_t proxy_bin_pos = path.find("cmakectl\\bin");
-        if (proxy_bin_pos == std::string::npos) {
-            proxy_bin_pos = path.find("cmakectl/bin");
-        }
+        // Remove cmake-ctl (and legacy cmakectl) bin paths from PATH.
+        size_t proxy_bin_pos = path.find("cmake-ctl\\bin");
+        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl/bin");
+        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmakectl\\bin");
+        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmakectl/bin");
         if (proxy_bin_pos != std::string::npos) {
             size_t start = proxy_bin_pos;
             // Find the semicolon before

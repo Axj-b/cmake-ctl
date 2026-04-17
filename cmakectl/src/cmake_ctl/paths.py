@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 def _default_home() -> Path:
-    env_home = os.environ.get("CMAKECTL_HOME")
+    env_home = os.environ.get("CMAKE_CTL_HOME") or os.environ.get("CMAKECTL_HOME")
     if env_home:
         return Path(env_home).expanduser().resolve()
 
-    return (Path.home() / ".cmakectl").resolve()
+    return (Path.home() / ".cmake-ctl").resolve()
 
 
 HOME_DIR = _default_home()

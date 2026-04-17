@@ -1,17 +1,17 @@
-# cmakectl Installation Complete
+# cmake-ctl Installation Complete
 
 ## Summary
 
-Successfully installed and configured cmakectl with cmake 4.3.1:
+Successfully installed and configured cmake-ctl with cmake 4.3.1:
 
 ### ✅ What's Ready
 
-1. **Python CLI** (`bin/cmakectl.bat`)
+1. **Python CLI** (`bin/cmake-ctl.bat`)
    - Commands: use, resolve, install-archive, list, clean, projects, etc.
    - Full version management and project tracking
 
 2. **cmake 4.3.1 Installed**
-   - Location: `~/.cmake-ctl\AppData\Local\cmakectl\versions\4.3.1`
+   - Location: `~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1`
    - Binaries: cmake.exe, cpack.exe, ctest.exe, cmake-gui.exe
 
 3. **C++ Proxy** (`bin/cmake.exe`)
@@ -24,10 +24,10 @@ Successfully installed and configured cmakectl with cmake 4.3.1:
 #### Direct Invocation (Recommended)
 ```powershell
 # Use the managed cmake directly
-~/.cmake-ctl\AppData\Local\cmakectl\versions\4.3.1\bin\cmake.exe --version
+~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe --version
 
-# Or via cmakectl command
-bin\cmakectl.bat resolve
+# Or via cmake-ctl command
+bin\cmake-ctl.bat resolve
 ```
 
 #### Using with PATH Setup
@@ -45,24 +45,24 @@ $env:PATH = "~/.cmake-ctl\bin;$env:PATH"
 ```powershell
 cd ~/.cmake-ctl\cmakectl
 $env:PYTHONPATH = "src;tests"
-python -m cmakectl.cli list
+python -m cmake_ctl.cli list
 # Output: * 4.3.1
 ```
 
-2. **Use cmakectl Commands**
+2. **Use cmake-ctl Commands**
 ```powershell
 # Set as default (already done)
-python -m cmakectl.cli resolve
+python -m cmake_ctl.cli resolve
 
 # Create a project with cmake
 mkdir my-project
 cd my-project
-~/.cmake-ctl\AppData\Local\cmakectl\versions\4.3.1\bin\cmake.exe -S . -B build
+~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe -S . -B build
 ```
 
 3. **Optional: Create cmake Symlink** (To avoid PATH recursion)
 ```cmd
-mklink ~/.cmake-ctl\bin\real-cmake.exe ~/.cmake-ctl\AppData\Local\cmakectl\versions\4.3.1\bin\cmake.exe
+mklink ~/.cmake-ctl\bin\real-cmake.exe ~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe
 ```
 
 ### 📊 Current State
@@ -75,14 +75,14 @@ mklink ~/.cmake-ctl\bin\real-cmake.exe ~/.cmake-ctl\AppData\Local\cmakectl\versi
 
 ### ⚙️ Configuration
 
-Global configuration stored in: `~/.cmakectl/config.json`
+Global configuration stored in: `~/.cmake-ctl/config.json`
 - Current default version: 4.3.1
 - Identity mode: id-file-first (supports project moves)
-- Session overrides: Per CMAKECTL_SESSION_ID
+- Session overrides: Per CMAKE_CTL_SESSION_ID
 
 ### 🔄 Event Tracking
 
-All cmake invocations are logged to: `~/.cmakectl/events/cmake_invocations.ndjson`
+All cmake invocations are logged to: `~/.cmake-ctl/events/cmake_invocations.ndjson`
 - Tracks: timestamp, source dir, build dir, cmake args
 - Used for project discovery and version propagation
 
@@ -94,8 +94,8 @@ All cmake invocations are logged to: `~/.cmakectl/events/cmake_invocations.ndjso
 
 ## Files Modified
 
-- `cmakectl/src/cmakectl/installer.py` - Added `install_from_archive()` for local ZIP extraction
-- `cmakectl/src/cmakectl/cli.py` - Added `install-archive` command
+- `cmakectl/src/cmake_ctl/installer.py` - Added `install_from_archive()` for local ZIP extraction
+- `cmakectl/src/cmake_ctl/cli.py` - Added `install-archive` command
 - `src/proxy/proxy.cpp` - Enhanced version resolution and recursion handling
 - `bin/cmake.exe` - Rebuilt with improved resolver
 

@@ -84,7 +84,7 @@ def resolve_version(
         candidates.append((latest, "latest"))
 
     if not candidates:
-        raise RuntimeError("No CMake version could be resolved. Install one with: cmakectl install <version>")
+        raise RuntimeError("No CMake version could be resolved. Install one with: cmake-ctl install <version>")
 
     for version, source in candidates:
         if is_installed_version(version):
@@ -93,7 +93,7 @@ def resolve_version(
     preferred, preferred_source = candidates[0]
     raise RuntimeError(
         f"Resolved {preferred_source} version '{preferred}', but it is not installed in managed versions. "
-        f"Install it with: cmakectl install {preferred} --url <artifact-url> --manifest <manifest.json>"
+        f"Install it with: cmake-ctl install {preferred} --url <artifact-url> --manifest <manifest.json>"
     )
 
 

@@ -11,7 +11,7 @@ from test_helpers import isolated_home
 class EventsAndDatabaseTests(unittest.TestCase):
     def test_event_processing_is_idempotent_and_dead_letters_invalid(self):
         with isolated_home() as home:
-            from cmakectl.events import Event, append_event, process_events
+            from cmake_ctl.events import Event, append_event, process_events
 
             log = home / "events.log"
             dead = home / "dead.log"
@@ -37,7 +37,7 @@ class EventsAndDatabaseTests(unittest.TestCase):
 
     def test_db_wal_migration_retry_and_rollback(self):
         with isolated_home() as home:
-            from cmakectl.database import (
+            from cmake_ctl.database import (
                 ProjectRecord,
                 init_db,
                 list_projects,

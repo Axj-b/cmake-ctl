@@ -10,11 +10,11 @@ from test_helpers import isolated_home
 class ResolutionAndIdentityTests(unittest.TestCase):
     def test_resolution_precedence_session_over_project_file_global(self):
         with isolated_home() as home:
-            from cmakectl.config_store import Config, save_config
-            from cmakectl.identity import ensure_project_id, resolve_project_identity
-            from cmakectl.paths import VERSIONS_DIR
-            from cmakectl.resolver import resolve_version
-            from cmakectl.session_store import SessionStore
+            from cmake_ctl.config_store import Config, save_config
+            from cmake_ctl.identity import ensure_project_id, resolve_project_identity
+            from cmake_ctl.paths import VERSIONS_DIR
+            from cmake_ctl.resolver import resolve_version
+            from cmake_ctl.session_store import SessionStore
 
             for v in ["3.25.0", "3.26.0", "3.27.0", "3.28.0"]:
                 (VERSIONS_DIR / v).mkdir(parents=True, exist_ok=True)
@@ -41,10 +41,10 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_project_move_reconciles_path_in_id_file_first_mode(self):
         with isolated_home() as home:
-            from cmakectl.config_store import Config, load_config, save_config
-            from cmakectl.identity import ensure_project_id, resolve_project_identity
-            from cmakectl.paths import VERSIONS_DIR
-            from cmakectl.resolver import reconcile_project_path, set_project_version
+            from cmake_ctl.config_store import Config, load_config, save_config
+            from cmake_ctl.identity import ensure_project_id, resolve_project_identity
+            from cmake_ctl.paths import VERSIONS_DIR
+            from cmake_ctl.resolver import reconcile_project_path, set_project_version
 
             (VERSIONS_DIR / "3.29.0").mkdir(parents=True, exist_ok=True)
 
@@ -60,7 +60,7 @@ class ResolutionAndIdentityTests(unittest.TestCase):
                 set_project_version("3.29.0", old)
 
                 new.mkdir(parents=True, exist_ok=True)
-                (old / ".cmakectl").rename(new / ".cmakectl")
+                (old / ".cmake-ctl").rename(new / ".cmake-ctl")
                 (old / "CMakeLists.txt").rename(new / "CMakeLists.txt")
 
                 changed = reconcile_project_path(new)
@@ -70,9 +70,9 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_global_switch_applies_on_next_invocation(self):
         with isolated_home():
-            from cmakectl.config_store import Config, save_config
-            from cmakectl.paths import VERSIONS_DIR
-            from cmakectl.resolver import resolve_version
+            from cmake_ctl.config_store import Config, save_config
+            from cmake_ctl.paths import VERSIONS_DIR
+            from cmake_ctl.resolver import resolve_version
 
             (VERSIONS_DIR / "3.28.0").mkdir(parents=True, exist_ok=True)
             (VERSIONS_DIR / "3.29.0").mkdir(parents=True, exist_ok=True)
@@ -91,8 +91,8 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_missing_managed_version_fails_actionably(self):
         with isolated_home():
-            from cmakectl.config_store import Config, save_config
-            from cmakectl.resolver import resolve_version
+            from cmake_ctl.config_store import Config, save_config
+            from cmake_ctl.resolver import resolve_version
 
             with tempfile.TemporaryDirectory() as td:
                 proj = Path(td)

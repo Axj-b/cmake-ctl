@@ -1,4 +1,4 @@
-"""cmakectl package."""
+"""cmake-ctl package."""
 
 __all__ = ["__version__"]
 

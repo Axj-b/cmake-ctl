@@ -11,7 +11,7 @@
 ### 2) Version Resolution Rules (Must)
 - [ ] Resolution order is deterministic and documented:
   1. Explicit CLI override (if provided)
-  2. Session override (`cmakectl use <ver> --session`)
+  2. Session override (`cmake-ctl use <ver> --session`)
   3. Project-persistent mapping
   4. Project .cmake-version near source directory
   5. Global default in config
@@ -22,7 +22,7 @@
 
 ### 2b) Project Identity and Move Handling (Must)
 - [ ] Identity strategy is configurable: `id-file-first` or `path-only`.
-- [ ] In `id-file-first` mode, `.cmakectl/project-id` is used as stable identity and canonical path is fallback.
+- [ ] In `id-file-first` mode, `.cmake-ctl/project-id` is used as stable identity and canonical path is fallback.
 - [ ] If project-id matches but path changes, mapping is reconciled to new canonical path safely.
 - [ ] If no project-id is available, path fallback behavior is deterministic and documented.
 
@@ -63,7 +63,7 @@
 - [ ] stats/analyze commands handle missing or partial data gracefully.
 
 ### 9) TUI Experience (Should)
-- [ ] `cmakectl tui` launches a guided terminal UI for core actions (install, use, projects, clean, stats).
+- [ ] `cmake-ctl tui` launches a guided terminal UI for core actions (install, use, projects, clean, stats).
 - [ ] TUI displays active source of version resolution (session, project, file, global).
 - [ ] TUI uses safe defaults for destructive actions (preview + confirmation).
 
@@ -100,14 +100,14 @@
 
 ### F. Cross-Platform Baseline
 - Core commands (install, list, use, projects, clean --dry-run, stats) pass smoke tests on Windows and Linux.
-- `cmakectl tui` launches and performs basic navigation on Windows and Linux terminals.
+- `cmake-ctl tui` launches and performs basic navigation on Windows and Linux terminals.
 
 ### G. Open Terminal Global Switch
-- After `cmakectl use <ver>` sets global default, already-open terminals select new global version on the next `cmake` run without restart.
+- After `cmake-ctl use <ver>` sets global default, already-open terminals select new global version on the next `cmake` run without restart.
 - In-flight cmake executions are unaffected.
 
 ### H. Project Move Behavior
-- In `id-file-first` mode, moving a project directory preserves version mapping via `.cmakectl/project-id`.
+- In `id-file-first` mode, moving a project directory preserves version mapping via `.cmake-ctl/project-id`.
 - In `path-only` mode, moved directories are treated as new project paths.
 
 ## Suggested V1 Test Matrix

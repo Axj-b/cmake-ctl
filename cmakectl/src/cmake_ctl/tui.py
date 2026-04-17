@@ -31,7 +31,7 @@ def _ask_yes_no(prompt: str, default: bool = False) -> bool:
 
 def _show_header() -> None:
     config = load_config()
-    print("\ncmakectl TUI")
+    print("cmake-ctl TUI")
     print(f"cwd: {Path.cwd().as_posix()}")
     print(f"global_version: {config.global_version or '<unset>'}")
     print(f"identity_mode: {config.identity_mode}")

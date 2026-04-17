@@ -23,7 +23,7 @@ Responsibilities:
 - Pass through all arguments unchanged
 - Return the same exit code as real CMake
 
-### Component 2: Python Tool (cmakectl)
+### Component 2: Python Tool (cmake-ctl)
 Purpose: feature-rich management and tracking tool.
 
 Responsibilities:
@@ -52,7 +52,7 @@ Version preference modes:
 
 Project identity and moved folder behavior:
 - Configurable identity strategy:
-  - id-file-first: use .cmakectl/project-id and fall back to canonical path
+  - id-file-first: use .cmake-ctl/project-id and fall back to canonical path
   - path-only: use canonical path only
 - If a project is moved and project-id is present, mapping can follow the project to the new path
 - If project-id is missing, path fallback treats moved location as a new project unless user remaps
@@ -83,7 +83,7 @@ Project identity and moved folder behavior:
 - Cleanup potential estimates
 
 ### Interactive TUI
-- Launch a guided terminal UI with `cmakectl tui`
+- Launch a guided terminal UI with `cmake-ctl tui`
 - Friendly onboarding for new users with plain-language actions
 - Quick workflows for install, use, projects, clean, and stats
 - Context panel showing active global, project, and session version sources
@@ -92,9 +92,9 @@ Project identity and moved folder behavior:
 ## Directory Structure
 
 ```text
-C:\Tools\cmakectl
+C:\Tools\cmake-ctl
 ├── cmake.exe                   # C++ proxy
-├── cmakectl\                   # Python package
+├── cmake_ctl\                  # Python package
 │   ├── main.py                 # Entry point
 │   ├── cli.py                  # Click commands
 │   ├── version_manager.py      # Version handling
@@ -115,30 +115,30 @@ C:\Tools\cmakectl
 
 ### Version Management
 ```bash
-cmakectl install 3.28.1
-cmakectl list
-cmakectl use 3.28.1
-cmakectl use 3.27.0 --project .
-cmakectl use 3.27.0 --session
-cmakectl remove 3.26.4
-cmakectl update
-cmakectl tui
+cmake-ctl install 3.28.1
+cmake-ctl list
+cmake-ctl use 3.28.1
+cmake-ctl use 3.27.0 --project .
+cmake-ctl use 3.27.0 --session
+cmake-ctl remove 3.26.4
+cmake-ctl update
+cmake-ctl tui
 ```
 
 ### Project Management
 ```bash
-cmakectl projects
-cmakectl projects --active
-cmakectl projects --stale
-cmakectl info
-cmakectl clean
-cmakectl clean --all-stale
-cmakectl clean --dry-run
-cmakectl tag work client-a
-cmakectl note "Important client"
-cmakectl pin
-cmakectl stats
-cmakectl analyze
+cmake-ctl projects
+cmake-ctl projects --active
+cmake-ctl projects --stale
+cmake-ctl info
+cmake-ctl clean
+cmake-ctl clean --all-stale
+cmake-ctl clean --dry-run
+cmake-ctl tag work client-a
+cmake-ctl note "Important client"
+cmake-ctl pin
+cmake-ctl stats
+cmake-ctl analyze
 ```
 
 ## Data Tracked Per Project
@@ -180,7 +180,7 @@ cmakectl analyze
 
 ### Version Detection Priority
 1. Explicit override from command context
-2. Session override (`cmakectl use <ver> --session`)
+2. Session override (`cmake-ctl use <ver> --session`)
 3. Project-persistent mapping
 4. .cmake-version in project root
 5. Global default in config.json
@@ -249,7 +249,7 @@ cmakectl analyze
 ## Distribution
 
 ### For Developers
-- Python package install: pip install cmakectl
+- Python package install: pip install cmake-ctl
 - Includes compiled cmake.exe proxy
 - Source code available
 
@@ -332,13 +332,13 @@ cmakectl analyze
 
 ### Quick Install (PowerShell)
 ```powershell
-irm https://cmakectl.dev/install.ps1 | iex
+irm https://cmake-ctl.dev/install.ps1 | iex
 ```
 
 ### Manual Install
 ```bash
-git clone https://github.com/user/cmakectl
-cd cmakectl
+git clone https://github.com/user/cmake-ctl
+cd cmake-ctl
 python -m pip install -e .
 # Copy cmake.exe to PATH
 ```
@@ -353,14 +353,14 @@ This tool will:
 - Help you clean up old build artifacts
 
 Setup:
-[1/4] Choose installation directory: C:\Tools\cmakectl
+[1/4] Choose installation directory: C:\Tools\cmake-ctl
 [2/4] Scan for existing CMake installations? [Y/n]
 [3/4] Scan for existing projects? [Y/n]
 [4/4] Add to PATH? [Y/n]
 
 Setup complete.
 
-Try: cmakectl install 3.28.1
+Try: cmake-ctl install 3.28.1
 ```
 
 ## Design Principles
@@ -373,7 +373,7 @@ Try: cmakectl install 3.28.1
 - Extensibility: feature growth without redesign
 
 ## Version Switching UX Rules
-- Default `cmakectl use <version> --project <path>` is persistent for that project.
+- Default `cmake-ctl use <version> --project <path>` is persistent for that project.
 - Optional `--session` applies only to the current shell session and does not change persistent project mapping.
 - If a project has no identity metadata and requested version differs from global, tool can prompt:
   - Save for this project (persistent)

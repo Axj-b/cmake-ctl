@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-PROJECT_ID_REL_PATH = Path(".cmakectl") / "project-id"
+PROJECT_ID_REL_PATH = Path(".cmake-ctl") / "project-id"
 
 
 @dataclass

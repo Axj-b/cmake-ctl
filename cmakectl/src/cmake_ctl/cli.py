@@ -24,7 +24,7 @@ from .tui import run_tui
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="cmakectl")
+    parser = argparse.ArgumentParser(prog="cmake-ctl")
     sub = parser.add_subparsers(dest="command", required=True)
 
     use_parser = sub.add_parser("use", help="Set global/project/session version")

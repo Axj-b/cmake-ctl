@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for cmakectl proxy on Unix-like systems
+# Build script for cmake-ctl proxy on Unix-like systems
 
 set -e
 
@@ -15,12 +15,12 @@ cmake ..
 cmake --build . --config Release
 
 # Copy executable to bin directory
-if [ -f "cmakectl-proxy" ]; then
-    cp cmakectl-proxy "$SCRIPT_DIR/bin/cmakectl-proxy"
-    chmod +x "$SCRIPT_DIR/bin/cmakectl-proxy"
-    echo "✓ Built cmakectl-proxy to $SCRIPT_DIR/bin/cmakectl-proxy"
-elif [ -f "Release/cmakectl-proxy" ]; then
-    cp "Release/cmakectl-proxy" "$SCRIPT_DIR/bin/cmakectl-proxy"
-    chmod +x "$SCRIPT_DIR/bin/cmakectl-proxy"
-    echo "✓ Built cmakectl-proxy to $SCRIPT_DIR/bin/cmakectl-proxy"
+if [ -f "cmake-ctl-proxy" ]; then
+    cp cmake-ctl-proxy "$SCRIPT_DIR/bin/cmake-ctl-proxy"
+    chmod +x "$SCRIPT_DIR/bin/cmake-ctl-proxy"
+    echo "✓ Built cmake-ctl-proxy to $SCRIPT_DIR/bin/cmake-ctl-proxy"
+elif [ -f "Release/cmake-ctl-proxy" ]; then
+    cp "Release/cmake-ctl-proxy" "$SCRIPT_DIR/bin/cmake-ctl-proxy"
+    chmod +x "$SCRIPT_DIR/bin/cmake-ctl-proxy"
+    echo "✓ Built cmake-ctl-proxy to $SCRIPT_DIR/bin/cmake-ctl-proxy"
 fi

@@ -3,16 +3,16 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cmakectl"
+name = "cmake-ctl"
 version = "0.1.0"
 description = "CMake version manager and project tracker"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "cmakectl" }]
+authors = [{ name = "cmake-ctl" }]
 dependencies = []
 
 [project.scripts]
-cmakectl = "cmakectl.cli:main"
+cmake-ctl = "cmake_ctl.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

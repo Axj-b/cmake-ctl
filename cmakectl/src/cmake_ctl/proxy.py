@@ -12,7 +12,8 @@ from .resolver import resolve_version
 from .source_discovery import discover_source_dir
 from .session_store import current_session_id
 
-RECURSION_ENV = "CMAKECTL_PROXY_ACTIVE"
+RECURSION_ENV = "CMAKE_CTL_PROXY_ACTIVE"
+LEGACY_RECURSION_ENV = "CMAKECTL_PROXY_ACTIVE"
 
 
 class ProxyError(RuntimeError):
@@ -37,7 +38,7 @@ def resolve_cmake_executable(project_path: Path, argv: list[str], explicit_versi
 
 
 def run_proxy(argv: list[str], project_path: Path | None = None, explicit_version: str | None = None) -> int:
-    if os.environ.get(RECURSION_ENV) == "1":
+    if os.environ.get(RECURSION_ENV) == "1" or os.environ.get(LEGACY_RECURSION_ENV) == "1":
         raise ProxyError("Proxy recursion guard triggered")
 
     proj = (project_path or Path.cwd()).resolve()
@@ -58,6 +59,7 @@ def run_proxy(argv: list[str], project_path: Path | None = None, explicit_versio
 
     env = os.environ.copy()
     env[RECURSION_ENV] = "1"
+    env[LEGACY_RECURSION_ENV] = "1"
     completed = subprocess.run([str(cmake_exec), *argv], env=env, check=False)
     return int(completed.returncode)
 
