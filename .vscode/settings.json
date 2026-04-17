@@ -1,5 +1,6 @@
 {
   "cmake.cmakePath": "${workspaceFolder}/bin/cmake.exe",
+  "cmake.useCMakePresets": "never",
   "cmake.configureSettings": {
     "CMAKE_PROJECT_NAME": "cmakectl"
   },

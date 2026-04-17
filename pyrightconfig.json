@@ -1,4 +1,4 @@
 {
-  "include": ["cmakectl/src", "cmakectl/tests"],
-  "extraPaths": ["cmakectl/src"]
+  "include": ["cmake-ctl/src", "cmake-ctl/tests"],
+  "extraPaths": ["cmake-ctl/src"]
 }

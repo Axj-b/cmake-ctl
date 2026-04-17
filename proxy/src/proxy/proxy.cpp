@@ -43,9 +43,6 @@ std::string get_home_dir() {
 // Utility: Resolve cmake-ctl home directory from env or defaults.
 std::string get_cmake_ctl_home() {
     std::string env_home = get_env("CMAKE_CTL_HOME");
-    if (env_home.empty()) {
-        env_home = get_env("CMAKECTL_HOME");
-    }
     if (!env_home.empty()) {
         return env_home;
     }
@@ -62,7 +59,11 @@ std::string get_cmake_ctl_home() {
 std::string discover_source_dir(const std::vector<std::string>& args) {
     for (size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "-S" && i + 1 < args.size()) {
-            return args[i + 1];
+            try {
+                return fs::absolute(args[i + 1]).lexically_normal().string();
+            } catch (...) {
+                return args[i + 1];
+            }
         }
     }
     // Default to current directory
@@ -73,7 +74,11 @@ std::string discover_source_dir(const std::vector<std::string>& args) {
 std::string discover_build_dir(const std::vector<std::string>& args) {
     for (size_t i = 0; i < args.size(); ++i) {
         if (args[i] == "-B" && i + 1 < args.size()) {
-            return args[i + 1];
+            try {
+                return fs::absolute(args[i + 1]).lexically_normal().string();
+            } catch (...) {
+                return args[i + 1];
+            }
         }
     }
     // Default to current directory
@@ -132,6 +137,8 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
         now.time_since_epoch()).count();
     std::string event_id = "cpp-" + std::to_string(nonce);
     
+    std::string cwd = fs::current_path().string();
+
     // Build canonical event JSON expected by Python processor.
     std::string event =
         "{\"schema_version\":1,"
@@ -139,7 +146,9 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
         "\"event_type\":\"cmake_invocation\"," 
         "\"payload\":{" 
             "\"project_path\":\"" + json_escape(source_dir) + "\"," 
+            "\"source_dir\":\"" + json_escape(source_dir) + "\"," 
             "\"build_dir\":\"" + json_escape(build_dir) + "\"," 
+            "\"cwd\":\"" + json_escape(cwd) + "\"," 
             "\"argv\":" + json_array_of_strings(args) + "," 
             "\"resolved_version\":\"\"," 
             "\"source\":\"cpp-proxy\"," 
@@ -158,7 +167,7 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
     }
 }
 
-// Resolve cmake executable path from cmake_ctl managed versions
+// Resolve cmake executable path from cmake-ctl managed versions
 std::string resolve_cmake_executable() {
     std::string cmake_ctl_home = get_cmake_ctl_home();
     std::string versions_dir = cmake_ctl_home + "/versions";
@@ -262,7 +271,7 @@ int main(int argc, char* argv[]) {
     
     // Set recursion guard for child processes
     set_env("CMAKE_CTL_PROXY_ACTIVE", "1");
-    set_env("CMAKECTL_PROXY_ACTIVE", "1");
+    set_env("CMAKE_CTL_PROXY_ACTIVE", "1");
     
     // Collect arguments (skip program name)
     std::vector<std::string> cmake_args;
@@ -280,11 +289,11 @@ int main(int argc, char* argv[]) {
     // If using fallback "cmake", remove proxy bin from PATH to avoid recursion
     if (cmake_exe == "cmake") {
         std::string path = get_env("PATH");
-        // Remove cmake-ctl (and legacy cmakectl) bin paths from PATH.
+        // Remove cmake-ctl (and legacy cmake-ctl) bin paths from PATH.
         size_t proxy_bin_pos = path.find("cmake-ctl\\bin");
         if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl/bin");
-        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmakectl\\bin");
-        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmakectl/bin");
+        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl\\bin");
+        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl/bin");
         if (proxy_bin_pos != std::string::npos) {
             size_t start = proxy_bin_pos;
             // Find the semicolon before
