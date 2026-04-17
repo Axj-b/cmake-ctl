@@ -11,7 +11,7 @@ Successfully installed and configured cmake-ctl with cmake 4.3.1:
    - Full version management and project tracking
 
 2. **cmake 4.3.1 Installed**
-   - Location: `~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1`
+   - Location: `~/.cmake-ctl/versions/4.3.1`
    - Binaries: cmake.exe, cpack.exe, ctest.exe, cmake-gui.exe
 
 3. **C++ Proxy** (`bin/cmake.exe`)
@@ -24,7 +24,7 @@ Successfully installed and configured cmake-ctl with cmake 4.3.1:
 #### Direct Invocation (Recommended)
 ```powershell
 # Use the managed cmake directly
-~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe --version
+~/.cmake-ctl/versions/4.3.1/bin/cmake.exe --version
 
 # Or via cmake-ctl command
 bin\cmake-ctl.bat resolve
@@ -33,17 +33,17 @@ bin\cmake-ctl.bat resolve
 #### Using with PATH Setup
 ```powershell
 # Add bin to PATH
-$env:PATH = "~/.cmake-ctl\bin;$env:PATH"
+$env:PATH = "<cmake-ctl-repo>/bin;$env:PATH"
 
 # Then use cmake proxy via full path
-~/.cmake-ctl\bin\cmake.exe -S . -B build
+<cmake-ctl-repo>/bin/cmake.exe -S . -B build
 ```
 
 ### 📋 Next Steps
 
 1. **Verify Installation**
 ```powershell
-cd ~/.cmake-ctl\cmake-ctl
+cd <cmake-ctl-repo>/cmake-ctl
 $env:PYTHONPATH = "src;tests"
 python -m cmake-ctl.cli list
 # Output: * 4.3.1
@@ -57,12 +57,12 @@ python -m cmake-ctl.cli resolve
 # Create a project with cmake
 mkdir my-project
 cd my-project
-~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe -S . -B build
+~/.cmake-ctl/versions/4.3.1/bin/cmake.exe -S . -B build
 ```
 
 3. **Optional: Create cmake Symlink** (To avoid PATH recursion)
 ```cmd
-mklink ~/.cmake-ctl\bin\real-cmake.exe ~/.cmake-ctl\AppData\Local\cmake-ctl\versions\4.3.1\bin\cmake.exe
+mklink <cmake-ctl-repo>/bin/real-cmake.exe ~/.cmake-ctl/versions/4.3.1/bin/cmake.exe
 ```
 
 ### 📊 Current State
