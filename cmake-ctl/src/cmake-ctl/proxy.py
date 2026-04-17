@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .config_store import load_config
 from .events import Event, append_event
+from .project_tracker import process_event as _track_event
 from .paths import VERSIONS_DIR, ensure_layout
 from .resolver import resolve_version
 from .source_discovery import discover_source_dir
@@ -70,21 +71,25 @@ def run_proxy(argv: list[str], project_path: Path | None = None, explicit_versio
 
     source_dir = discover_source_dir(argv, cwd=proj)
 
-    append_event(
-        Event(
-            event_id=str(uuid.uuid4()),
-            event_type="cmake_invocation",
-            payload={
-                "project_path": source_dir.resolve().as_posix(),
-                "source_dir": source_dir.resolve().as_posix(),
-                "build_dir": proj.as_posix(),
-                "cwd": proj.as_posix(),
-                "argv": argv,
-                "resolved_version": version,
-                "source": source,
-            },
-        )
+    event = Event(
+        event_id=str(uuid.uuid4()),
+        event_type="cmake_invocation",
+        payload={
+            "project_path": source_dir.resolve().as_posix(),
+            "source_dir": source_dir.resolve().as_posix(),
+            "build_dir": proj.as_posix(),
+            "cwd": proj.as_posix(),
+            "argv": argv,
+            "resolved_version": version,
+            "source": source,
+        },
     )
+    append_event(event)
+    # Auto-process immediately so projects.db is always up-to-date.
+    try:
+        _track_event(event)
+    except Exception:
+        pass  # Never let tracking failure abort the actual cmake invocation.
 
     env = os.environ.copy()
     env[RECURSION_ENV] = "1"

@@ -10,9 +10,15 @@ def _is_configure_like(argv: list[str]) -> bool:
     # Track configure/generate style invocations that define project context.
     if not argv:
         return True
-    if "--build" in argv:
+    # Explicit non-configure modes.
+    if "--build" in argv or "--install" in argv or "--open" in argv:
         return False
-    return ("-S" in argv) or ("-B" in argv) or ("--preset" in argv)
+    # Explicit configure flags.
+    if ("-S" in argv) or ("-B" in argv) or ("--preset" in argv):
+        return True
+    # Positional source/build path: cmake . or cmake /path/to/src
+    positional = [a for a in argv if not a.startswith("-")]
+    return len(positional) > 0
 
 
 def _resolve_project_path(payload: dict) -> Path:

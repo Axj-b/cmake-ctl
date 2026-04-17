@@ -17,6 +17,14 @@ def discover_source_dir(argv: list[str], cwd: Path | None = None) -> Path:
         if preset_source is not None:
             return preset_source
 
+    # Positional source path: cmake [options] <path>
+    # e.g. cmake .. or cmake -G "Ninja" /path/to/src
+    positional = _find_positional_source(argv)
+    if positional:
+        candidate = (base / positional).resolve() if not Path(positional).is_absolute() else Path(positional).resolve()
+        if candidate.is_dir():
+            return candidate
+
     if _looks_like_build_dir(base):
         cache_source = _source_from_cache(base)
         if cache_source is not None:
@@ -36,6 +44,41 @@ def _find_option(argv: list[str], *names: str) -> str | None:
         for name in names:
             if token.startswith(name + "="):
                 return token.split("=", 1)[1]
+    return None
+
+
+# Options that take a value argument (so their value is not a positional source).
+_OPTIONS_WITH_VALUE = {
+    "-G", "--generator",
+    "-T", "--toolset",
+    "-A", "--platform",
+    "-D", "-U",
+    "-C",
+    "--log-level",
+    "--log-context",
+    "-P",
+    "--graphviz",
+    "--system-information",
+    "--loglevel",
+    "-W",
+}
+
+
+def _find_positional_source(argv: list[str]) -> str | None:
+    """Return the last bare positional argument that looks like a source path."""
+    skip_next = False
+    for token in argv:
+        if skip_next:
+            skip_next = False
+            continue
+        if token in _OPTIONS_WITH_VALUE:
+            skip_next = True
+            continue
+        # Inline -Dname=val, -Uname, etc.
+        if token.startswith("-"):
+            continue
+        # This token is positional — treat it as the source path candidate.
+        return token
     return None
 
 

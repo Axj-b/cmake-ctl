@@ -562,9 +562,18 @@ def _action_projects(state: UiState) -> None:
         _log(state, _colorize("No tracked projects", _YELLOW))
         return
 
-    for row in rows:
-        pin_mark = _colorize("pinned", _GREEN) if row["pinned"] else _colorize("unpinned", _YELLOW)
-        _log(state, f"{_colorize(row['project_key'], _CYAN)} {_colorize(row['cmake_version'], _MAGENTA)} {pin_mark} {_colorize(row['path'], _BLUE)}")
+    _log(state, _colorize(f"\n  {len(rows)} tracked project(s)", _BOLD + _WHITE))
+    for i, row in enumerate(rows, 1):
+        pin_mark = _colorize("● pinned", _GREEN) if row["pinned"] else _colorize("○ unpinned", _YELLOW)
+        gen = row.get("generator") or ""
+        gen_str = f"  {_colorize('•', _WHITE)} generator : {_colorize(gen, _WHITE)}" if gen else ""
+        _log(state, "")
+        _log(state, f"  {_colorize(str(i) + '.', _BOLD + _WHITE)} {_colorize(row['project_key'], _BOLD + _CYAN)}")
+        _log(state, f"  {_colorize('•', _WHITE)} path      : {_colorize(row['path'], _BLUE)}")
+        _log(state, f"  {_colorize('•', _WHITE)} cmake     : {_colorize(row['cmake_version'], _MAGENTA)}")
+        if gen_str:
+            _log(state, gen_str)
+        _log(state, f"  {_colorize('•', _WHITE)} status    : {pin_mark}")
 
 
 def _action_clean(state: UiState) -> None:

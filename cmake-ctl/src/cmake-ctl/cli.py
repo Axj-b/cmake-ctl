@@ -23,6 +23,19 @@ from .session_store import SessionStore, current_session_id
 from .tui import run_tui
 from .vscode_setup import apply_vscode_settings, remove_vscode_settings
 
+_RESET = "\033[0m"
+_BOLD = "\033[1m"
+_GREEN = "\033[92m"
+_YELLOW = "\033[93m"
+_BLUE = "\033[94m"
+_MAGENTA = "\033[95m"
+_CYAN = "\033[96m"
+_WHITE = "\033[97m"
+
+
+def _colorize(text: str, code: str) -> str:
+    return f"{code}{text}{_RESET}"
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cmake-ctl")
@@ -203,9 +216,18 @@ def _cmd_projects(pin: str | None, unpin: str | None) -> int:
         print("No tracked projects")
         return 0
 
-    for r in rows:
-        pin_mark = "pinned" if r["pinned"] else "unpinned"
-        print(f"{r['project_key']} {r['cmake_version']} {pin_mark} {r['path']}")
+    print(_colorize(f"\n  {len(rows)} tracked project(s)", _BOLD + _WHITE))
+    for i, r in enumerate(rows, 1):
+        pin_mark = _colorize("● pinned", _GREEN) if r["pinned"] else _colorize("○ unpinned", _YELLOW)
+        generator = r.get("generator") or ""
+
+        print()
+        print(f"  {_colorize(str(i) + '.', _BOLD + _WHITE)} {_colorize(r['project_key'], _BOLD + _CYAN)}")
+        print(f"  {_colorize('•', _WHITE)} path      : {_colorize(r['path'], _BLUE)}")
+        print(f"  {_colorize('•', _WHITE)} cmake     : {_colorize(r['cmake_version'], _MAGENTA)}")
+        if generator:
+            print(f"  {_colorize('•', _WHITE)} generator : {_colorize(generator, _WHITE)}")
+        print(f"  {_colorize('•', _WHITE)} status    : {pin_mark}")
     return 0
 
 
