@@ -184,6 +184,9 @@ def _cmd_projects(pin: str | None, unpin: str | None) -> int:
     if unpin:
         set_pinned(unpin, False)
 
+    # Keep project list fresh when user has run cmake through proxy recently.
+    process_events(process_event)
+
     rows = list_projects()
     if not rows:
         print("No tracked projects")

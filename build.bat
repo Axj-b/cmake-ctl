@@ -5,6 +5,16 @@ setlocal enabledelayedexpansion
 
 set SCRIPT_DIR=%~dp0
 set BUILD_DIR=%SCRIPT_DIR%build
+set SOURCE_FILE=%SCRIPT_DIR%proxy\src\proxy\proxy.cpp
+set OUTPUT_FILE=%SCRIPT_DIR%bin\cmake.exe
+
+if not exist "%SCRIPT_DIR%bin" mkdir "%SCRIPT_DIR%bin"
+
+where cmake >nul 2>nul
+if errorlevel 1 (
+    echo CMake not found. Falling back to direct compiler build...
+    goto direct_build
+)
 
 REM Create build directory
 if not exist "%BUILD_DIR%" mkdir "%BUILD_DIR%"
@@ -13,25 +23,64 @@ cd /d "%BUILD_DIR%"
 REM Configure with CMake
 cmake ..
 if !errorlevel! neq 0 (
-    echo Error: CMake configuration failed
-    exit /b 1
+    echo CMake configuration failed. Falling back to direct compiler build...
+    cd /d "%SCRIPT_DIR%"
+    goto direct_build
 )
 
 REM Build
 cmake --build . --config Release
 if !errorlevel! neq 0 (
-    echo Error: Build failed
-    exit /b 1
+    echo CMake build failed. Falling back to direct compiler build...
+    cd /d "%SCRIPT_DIR%"
+    goto direct_build
 )
 
-REM Copy executable to bin directory
+REM Copy executable to bin directory as cmake.exe
 if exist "Release\cmake-ctl-proxy.exe" (
-    copy "Release\cmake-ctl-proxy.exe" "%SCRIPT_DIR%bin\cmake-ctl-proxy.exe"
-    echo Build complete: %SCRIPT_DIR%bin\cmake-ctl-proxy.exe
+    copy /Y "Release\cmake-ctl-proxy.exe" "%OUTPUT_FILE%"
+    echo Build complete: %OUTPUT_FILE%
+    exit /b 0
 ) else if exist "cmake-ctl-proxy.exe" (
-    copy "cmake-ctl-proxy.exe" "%SCRIPT_DIR%bin\cmake-ctl-proxy.exe"
-    echo Build complete: %SCRIPT_DIR%bin\cmake-ctl-proxy.exe
+    copy /Y "cmake-ctl-proxy.exe" "%OUTPUT_FILE%"
+    echo Build complete: %OUTPUT_FILE%
+    exit /b 0
 ) else (
-    echo Error: cmake-ctl-proxy.exe not found after build
-    exit /b 1
+    echo CMake finished but output executable was not found. Falling back to direct compiler build...
+    cd /d "%SCRIPT_DIR%"
+    goto direct_build
 )
+
+:direct_build
+where cl >nul 2>nul
+if not errorlevel 1 (
+    echo Using MSVC cl compiler...
+    cl /nologo /EHsc /std:c++17 "%SOURCE_FILE%" /Fe:"%OUTPUT_FILE%" shell32.lib
+    if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        echo Build complete: %OUTPUT_FILE%
+        exit /b 0
+    )
+)
+
+where clang++ >nul 2>nul
+if not errorlevel 1 (
+    echo Using clang++ compiler...
+    clang++ -std=c++17 -O2 "%SOURCE_FILE%" -o "%OUTPUT_FILE%" -lshell32
+    if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        echo Build complete: %OUTPUT_FILE%
+        exit /b 0
+    )
+)
+
+where g++ >nul 2>nul
+if not errorlevel 1 (
+    echo Using g++ compiler...
+    g++ -std=c++17 -O2 "%SOURCE_FILE%" -o "%OUTPUT_FILE%" -lshell32
+    if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        echo Build complete: %OUTPUT_FILE%
+        exit /b 0
+    )
+)
+
+echo Error: Could not build proxy. Install CMake or use a shell with cl or g++ available.
+exit /b 1

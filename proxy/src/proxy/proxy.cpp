@@ -80,26 +80,46 @@ std::string discover_build_dir(const std::vector<std::string>& args) {
     return fs::current_path().string();
 }
 
+std::string json_escape(const std::string& in) {
+    std::string out;
+    out.reserve(in.size() + 16);
+    for (char c : in) {
+        switch (c) {
+            case '"': out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default: out += c; break;
+        }
+    }
+    return out;
+}
+
+std::string json_array_of_strings(const std::vector<std::string>& values) {
+    std::string out = "[";
+    for (size_t i = 0; i < values.size(); ++i) {
+        if (i > 0) out += ",";
+        out += "\"" + json_escape(values[i]) + "\"";
+    }
+    out += "]";
+    return out;
+}
+
 // Emit event to NDJSON file
 void emit_event(const std::string& source_dir, const std::string& build_dir, 
                 const std::vector<std::string>& args) {
     std::string cmake_ctl_home = get_cmake_ctl_home();
-    std::string events_dir = cmake_ctl_home + "/events";
-    std::string events_file = events_dir + "/cmake_invocations.ndjson";
+    std::string events_file = cmake_ctl_home + "/events.log";
     
-    // Ensure directory exists
+    // Ensure parent directory exists
     try {
-        fs::create_directories(events_dir);
+        fs::create_directories(cmake_ctl_home);
     } catch (const std::exception&) {
         // Silently fail if unable to create
         return;
-    }
-    
-    // Build args string
-    std::string args_str;
-    for (size_t i = 0; i < args.size(); ++i) {
-        if (i > 0) args_str += " ";
-        args_str += args[i];
     }
     
     // Get current timestamp in ISO 8601 format
@@ -108,12 +128,23 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
     std::ostringstream oss;
     oss << std::put_time(std::gmtime(&time), "%Y-%m-%dT%H:%M:%SZ");
     std::string timestamp = oss.str();
+    auto nonce = std::chrono::duration_cast<std::chrono::microseconds>(
+        now.time_since_epoch()).count();
+    std::string event_id = "cpp-" + std::to_string(nonce);
     
-    // Build event JSON
-    std::string event = R"({"event":"cmake_invocation","timestamp":")" + timestamp + 
-                       R"(","source_dir":")" + source_dir + 
-                       R"(","build_dir":")" + build_dir + 
-                       R"(","args":")" + args_str + "\"}";
+    // Build canonical event JSON expected by Python processor.
+    std::string event =
+        "{\"schema_version\":1,"
+        "\"event_id\":\"" + json_escape(event_id) + "\"," 
+        "\"event_type\":\"cmake_invocation\"," 
+        "\"payload\":{" 
+            "\"project_path\":\"" + json_escape(source_dir) + "\"," 
+            "\"build_dir\":\"" + json_escape(build_dir) + "\"," 
+            "\"argv\":" + json_array_of_strings(args) + "," 
+            "\"resolved_version\":\"\"," 
+            "\"source\":\"cpp-proxy\"," 
+            "\"timestamp\":\"" + json_escape(timestamp) + "\"" 
+        "}}";
     
     // Append to file
     try {

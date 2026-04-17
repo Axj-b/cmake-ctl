@@ -1,0 +1,56 @@
+name: Release Windows Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version/tag (example: v0.1.0)"
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-package-release:
+    runs-on: windows-latest
+
+    env:
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build and package release zip
+        shell: pwsh
+        run: |
+          Write-Host "Packaging version: $env:VERSION"
+          python scripts/create_release_zip.py --version "$env:VERSION" --platform windows-x64
+
+      - name: Show dist contents
+        shell: pwsh
+        run: |
+          Get-ChildItem dist | Format-Table -AutoSize
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmake-ctl-${{ env.VERSION }}-windows
+          path: dist/*.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          files: dist/*.zip
+          generate_release_notes: true

@@ -1,57 +1,106 @@
 # cmake-ctl
 
-A CMake version manager with a transparent `cmake` proxy, project-aware resolution, and safe cleanup tooling.
+cmake-ctl is a CMake version manager with a transparent `cmake` proxy, project-aware resolution, and cleanup tooling.
 
-`cmake-ctl` lets you install multiple CMake versions side-by-side and route `cmake` calls to the right version without changing your build commands.
+It lets you install multiple CMake versions side-by-side and keep normal `cmake` commands while routing to the right version.
 
 ## Highlights
 
 - Install CMake versions from URL or local archive
-- Switch versions globally, per project, or per session
-- Transparent proxy executable for normal `cmake` workflows
-- Event logging and project tracking
-- Safe cleanup with dry-run support and pin-aware behavior
-- Interactive TUI for common workflows
+- Resolve versions globally, per project, or per session
+- Transparent proxy executable (`cmake`/`cmake.exe`)
+- Event logging and tracked project metadata
+- Safe cleanup with dry-run and pin-aware behavior
+- CLI + interactive TUI workflows
 
-## Repository Layout
+## Real Repository Structure
 
 ```text
 .
-├── bin/
-│   ├── cmake.exe            # C++ proxy executable (Windows)
-│   └── cmake-ctl.bat         # CLI entrypoint wrapper
+├── bin/                         # Runtime entrypoints and proxy artifact
+│   ├── cmake.exe               # Proxy artifact on Windows (cmake on Unix)
+│   └── cmake-ctl.bat           # CLI launcher (Windows)
+├── build/                       # CMake build directory (generated)
 ├── cmakectl/
-│   ├── src/cmake_ctl/        # Python package
-│   └── tests/               # Unit tests
-├── src/proxy/
-│   └── proxy.cpp            # C++ proxy source
+│   ├── pyproject.toml
+│   ├── src/
+│   │   └── cmake_ctl/          # Python package source
+│   │       ├── cli.py
+│   │       ├── resolver.py
+│   │       ├── installer.py
+│   │       ├── events.py
+│   │       ├── database.py
+│   │       └── ...
+│   └── tests/                  # Python unit tests
 ├── docs/
 │   ├── IDEA.md
 │   └── V1-CHECKLIST.md
-├── CMakeLists.txt           # Proxy build definition
-├── build.bat
-├── build.sh
+├── proxy/
+│   ├── CMakeLists.txt          # Canonical proxy CMake definition
+│   └── src/
+│       └── proxy/
+│           └── proxy.cpp       # C++ proxy source
+├── scripts/
+│   └── create_release_zip.py   # End-user zip packaging script
+├── dist/                        # Release zips (generated)
+├── CMakeLists.txt               # Top-level wrapper (add_subdirectory(proxy))
+├── build.bat                    # Windows build entrypoint
+├── build.sh                     # Linux/macOS build entrypoint
+├── INSTALLATION.md
 └── README.md
 ```
+
+Notes:
+- Build definitions are under `proxy/`, not `bin/`.
 
 ## Runtime Data Location
 
 By default, runtime state is stored in:
 
 - Windows: `C:\Users\<you>\.cmake-ctl`
-- Override with: `CMAKE_CTL_HOME`
+- Linux/macOS: `~/.cmake-ctl`
+- Override with environment variable: `CMAKE_CTL_HOME`
 
-Inside that directory:
+Typical contents:
 
-- `config.json` - global and per-project settings
-- `versions/` - installed CMake versions
-- `events/` - proxy invocation logs
-- `projects.db` - tracked project metadata
-- `downloads/` - downloaded archives
+- `config.json`: global and per-project config
+- `versions/`: installed CMake versions
+- `events.log`: canonical event queue
+- `events/cmake_invocations.ndjson`: legacy queue input (still supported)
+- `projects.db`: tracked project metadata
+- `downloads/`: downloaded archives
 
-## Quick Start (Windows)
+## Build Proxy
 
-### 1. Use the CLI from repo
+### Windows
+
+```powershell
+cd ~/.cmake-ctl
+.\build.bat
+```
+
+### Linux/macOS
+
+```bash
+cd /path/to/cmakectl
+./build.sh
+```
+
+Build output:
+
+- Windows: `bin/cmake.exe`
+- Linux/macOS: `bin/cmake`
+
+Fallback behavior:
+
+- Scripts use CMake when available.
+- If CMake is not available (or fails), they fall back to direct compiler builds.
+  - Windows fallback order: `cl`, `clang++`, `g++`
+  - Linux/macOS fallback order: `c++`, `g++`, `clang++`
+
+## Use CLI From Source Checkout
+
+### Windows PowerShell
 
 ```powershell
 cd ~/.cmake-ctl\cmakectl
@@ -59,32 +108,12 @@ $env:PYTHONPATH = "src;tests"
 python -m cmake_ctl.cli list
 ```
 
-### 2. Install a CMake version
+### Linux/macOS
 
-From URL only:
-
-```powershell
-python -m cmake_ctl.cli install 3.30.0 --url "https://github.com/Kitware/CMake/releases/download/v3.30.0/cmake-3.30.0-windows-x86_64.zip"
-```
-
-From local archive:
-
-```powershell
-python -m cmake_ctl.cli install-archive 4.3.1 --archive "~/.cmake-ctl\archive\cmake-4.3.1-windows-x86_64.zip"
-```
-
-### 3. Select active version
-
-```powershell
-python -m cmake_ctl.cli use 3.30.0
-python -m cmake_ctl.cli resolve
-```
-
-### 4. Route `cmake` through proxy
-
-```powershell
-$env:PATH = "~/.cmake-ctl\bin;$env:PATH"
-cmake --version
+```bash
+cd /path/to/cmakectl/cmakectl
+export PYTHONPATH="src:tests"
+python -m cmake_ctl.cli list
 ```
 
 ## Core Commands
@@ -104,9 +133,7 @@ cmake-ctl identity-mode [id-file-first|path-only]
 cmake-ctl tui
 ```
 
-## Resolution Priority
-
-Version resolution follows this order:
+## Version Resolution Priority
 
 1. Explicit command override
 2. Session override
@@ -115,16 +142,37 @@ Version resolution follows this order:
 5. Global default (`config.json`)
 6. Latest installed version
 
-## Build the Proxy
+## Create End-User Release Zip
+
+Use the packaging script:
 
 ```powershell
 cd ~/.cmake-ctl
-.\build.bat
+python scripts/create_release_zip.py --version 0.1.0
 ```
 
-This builds `cmake-ctl-proxy.exe` into `build\Release` and deploys as `bin\cmake.exe`.
+Example output:
+
+```text
+dist/cmake-ctl-0.1.0-windows-x64.zip
+```
+
+Useful options:
+
+- `--skip-build`: package existing artifacts only
+- `--platform`: override platform label
+- `--out-dir`: output directory (default `dist`)
+
+Minimal GitHub Actions step:
+
+```yaml
+- name: Create release zip
+  run: python scripts/create_release_zip.py --version ${{ github.ref_name }}
+```
 
 ## Testing
+
+### Windows PowerShell
 
 ```powershell
 cd ~/.cmake-ctl\cmakectl
@@ -132,11 +180,19 @@ $env:PYTHONPATH = "src;tests"
 python -m unittest discover -s tests -v
 ```
 
-## Notes and Safety
+### Linux/macOS
 
-- URL install without `--manifest`/`--sha256` is allowed but not checksum-verified.
+```bash
+cd /path/to/cmakectl/cmakectl
+export PYTHONPATH="src:tests"
+python -m unittest discover -s tests -v
+```
+
+## Notes
+
+- URL install without `--manifest` or `--sha256` is allowed but not checksum-verified.
 - `clean` defaults to preview mode unless `--execute` is provided.
-- Proxy recursion is guarded to avoid self-invocation loops.
+- Proxy recursion protection is enabled.
 
 ## License
 
