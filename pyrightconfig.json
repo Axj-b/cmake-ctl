@@ -1,0 +1,4 @@
+{
+  "include": ["cmakectl/src", "cmakectl/tests"],
+  "extraPaths": ["cmakectl/src"]
+}
