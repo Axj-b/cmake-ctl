@@ -8,7 +8,7 @@ from .cleaner import execute_cleanup, plan_cleanup
 from .config_store import load_config, save_config
 from .database import list_projects, set_pinned
 from .events import process_events
-from .installer import InstallError, install_version, install_from_archive
+from .installer import InstallError, construct_release_url, install_version, install_from_archive
 from .project_tracker import process_event
 from .proxy import run_proxy
 from .resolver import (
@@ -36,9 +36,9 @@ def _build_parser() -> argparse.ArgumentParser:
     resolve_parser.add_argument("--project", default=".", help="Project path")
     resolve_parser.add_argument("cmake_args", nargs="*", help="Optional cmake args for source discovery")
 
-    install_parser = sub.add_parser("install", help="Install a version from URL")
+    install_parser = sub.add_parser("install", help="Install a version (URL optional; defaults to GitHub release asset)")
     install_parser.add_argument("version", help="Version to install")
-    install_parser.add_argument("--url", required=True, help="Artifact URL")
+    install_parser.add_argument("--url", help="Artifact URL; if omitted, URL is auto-constructed from version")
     install_parser.add_argument("--manifest", help="Optional manifest JSON path for checksum validation")
     install_parser.add_argument("--sha256", help="Optional SHA256 checksum for direct validation")
 
@@ -117,7 +117,11 @@ def _cmd_resolve(project: str, cmake_args: list[str]) -> int:
     return 0
 
 
-def _cmd_install(version: str, artifact_url: str, manifest: str | None, sha256: str | None) -> int:
+def _cmd_install(version: str, artifact_url: str | None, manifest: str | None, sha256: str | None) -> int:
+    if not artifact_url:
+        artifact_url = construct_release_url(version)
+        print(f"auto-url: {artifact_url}")
+
     try:
         target = install_version(
             version,

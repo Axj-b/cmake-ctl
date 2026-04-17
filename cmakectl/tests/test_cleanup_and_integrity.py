@@ -70,6 +70,19 @@ class CleanupAndIntegrityTests(unittest.TestCase):
                 install_version("9.9.9", src.as_uri(), manifest)
             self.assertFalse((VERSIONS_DIR / "9.9.9").exists())
 
+    def test_construct_release_url_windows(self):
+        from unittest import mock
+
+        from cmake_ctl.installer import construct_release_url
+
+        with mock.patch("platform.system", return_value="Windows"):
+            with mock.patch("platform.machine", return_value="AMD64"):
+                url = construct_release_url("4.2.4")
+                self.assertEqual(
+                    url,
+                    "https://github.com/Kitware/CMake/releases/download/v4.2.4/cmake-4.2.4-windows-x86_64.zip",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
