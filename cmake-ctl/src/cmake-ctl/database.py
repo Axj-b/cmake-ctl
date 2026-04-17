@@ -150,3 +150,31 @@ def set_pinned(project_key: str, pinned: bool, db_path: Path | None = None) -> N
             conn.execute("UPDATE projects SET pinned=? WHERE project_key=?", (1 if pinned else 0, project_key))
 
     with_write_retry(_op)
+
+
+def remove_project(project_key: str, db_path: Path | None = None) -> int:
+    init_db(db_path)
+
+    def _op() -> int:
+        with managed_connection(db_path) as conn:
+            cur = conn.execute("DELETE FROM projects WHERE project_key = ?", (project_key,))
+            return int(cur.rowcount)
+
+    return int(with_write_retry(_op))
+
+
+def prune_missing_projects(db_path: Path | None = None) -> int:
+    init_db(db_path)
+
+    def _op() -> int:
+        with managed_connection(db_path) as conn:
+            rows = conn.execute("SELECT project_key, path FROM projects").fetchall()
+            missing_keys = [str(project_key) for project_key, path in rows if not Path(str(path)).exists()]
+            if not missing_keys:
+                return 0
+
+            placeholders = ",".join(["?"] * len(missing_keys))
+            cur = conn.execute(f"DELETE FROM projects WHERE project_key IN ({placeholders})", missing_keys)
+            return int(cur.rowcount)
+
+    return int(with_write_retry(_op))

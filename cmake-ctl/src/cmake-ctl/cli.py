@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .cleaner import execute_cleanup, plan_cleanup
 from .config_store import load_config, save_config
-from .database import list_projects, set_pinned
+from .database import list_projects, prune_missing_projects, remove_project, set_pinned
 from .events import process_events
 from .installer import InstallError, construct_release_url, install_version, install_from_archive
 from .project_tracker import process_event
@@ -72,10 +72,13 @@ def _build_parser() -> argparse.ArgumentParser:
     events_parser.add_argument("--process", action="store_true", help="Process queued events")
 
     projects_parser = sub.add_parser("projects", help="List tracked projects")
-    projects_parser.add_argument("--pin", help="Pin project key")
-    projects_parser.add_argument("--unpin", help="Unpin project key")
+    projects_parser.add_argument("--pin", help="Pin project by ID or key")
+    projects_parser.add_argument("--unpin", help="Unpin project by ID or key")
+    projects_parser.add_argument("--remove", help="Remove tracked project by ID or project key")
+    projects_parser.add_argument("--prune-missing", action="store_true", help="Remove tracked entries whose paths no longer exist")
 
     clean_parser = sub.add_parser("clean", help="Safe cleanup")
+    clean_parser.add_argument("project_or_id", nargs="?", default=None, help="Project path or tracked project ID from `cmake-ctl projects`")
     clean_parser.add_argument("--project", default=".", help="Project root")
     clean_parser.add_argument("--build-dir", help="Build directory")
     clean_parser.add_argument("--archive-dir", help="Write archive manifest before deletion")
@@ -202,16 +205,59 @@ def _cmd_events(process_flag: bool) -> int:
     return 0
 
 
-def _cmd_projects(pin: str | None, unpin: str | None) -> int:
-    if pin:
-        set_pinned(pin, True)
-    if unpin:
-        set_pinned(unpin, False)
+def _resolve_project_key_from_id_or_key(token: str, rows: list[dict]) -> str:
+    value = token.strip()
+    if not value:
+        raise ValueError("Project ID/key is required")
 
+    if value.isdigit():
+        idx = int(value)
+        if 1 <= idx <= len(rows):
+            return str(rows[idx - 1]["project_key"])
+    return value
+
+
+def _cmd_projects(pin: str | None, unpin: str | None, remove: str | None, prune_missing: bool) -> int:
     # Keep project list fresh when user has run cmake through proxy recently.
     process_events(process_event)
 
+    if prune_missing:
+        removed = prune_missing_projects()
+        print(f"Pruned missing project entries: {removed}")
+
     rows = list_projects()
+    if pin:
+        try:
+            key = _resolve_project_key_from_id_or_key(pin, rows)
+        except ValueError as exc:
+            print(f"error: {exc}")
+            return 1
+        set_pinned(key, True)
+        rows = list_projects()
+
+    if unpin:
+        try:
+            key = _resolve_project_key_from_id_or_key(unpin, rows)
+        except ValueError as exc:
+            print(f"error: {exc}")
+            return 1
+        set_pinned(key, False)
+        rows = list_projects()
+
+    if remove:
+        try:
+            key = _resolve_project_key_from_id_or_key(remove, rows)
+        except ValueError as exc:
+            print(f"error: {exc}")
+            return 1
+
+        removed = remove_project(key)
+        if removed:
+            print(f"Removed tracked project: {key}")
+        else:
+            print(f"No tracked project found for: {remove}")
+        rows = list_projects()
+
     if not rows:
         print("No tracked projects")
         return 0
@@ -223,6 +269,8 @@ def _cmd_projects(pin: str | None, unpin: str | None) -> int:
 
         print()
         print(f"  {_colorize(str(i) + '.', _BOLD + _WHITE)} {_colorize(r['project_key'], _BOLD + _CYAN)}")
+        print(f"  {_colorize('•', _WHITE)} id        : {_colorize(str(i), _WHITE)}")
+        print(f"  {_colorize('•', _WHITE)} project key: {_colorize(r['project_key'], _CYAN)}")
         print(f"  {_colorize('•', _WHITE)} path      : {_colorize(r['path'], _BLUE)}")
         print(f"  {_colorize('•', _WHITE)} cmake     : {_colorize(r['cmake_version'], _MAGENTA)}")
         if generator:
@@ -231,14 +279,41 @@ def _cmd_projects(pin: str | None, unpin: str | None) -> int:
     return 0
 
 
+def _resolve_clean_project_root(project_or_id: str | None, project_option: str) -> Path:
+    # Positional value takes precedence; accept either project path or tracked project numeric ID.
+    if project_or_id is None:
+        return Path(project_option)
+
+    token = project_or_id.strip()
+    if not token:
+        return Path(project_option)
+
+    if token.isdigit():
+        # Keep list fresh before mapping IDs.
+        process_events(process_event)
+        rows = list_projects()
+        idx = int(token)
+        if idx <= 0 or idx > len(rows):
+            raise ValueError(f"Invalid project ID: {idx}. Run `cmake-ctl projects` to list valid IDs.")
+        return Path(rows[idx - 1]["path"])
+
+    return Path(token)
+
+
 def _cmd_clean(
+    project_or_id: str | None,
     project: str,
     build_dir: str | None,
     archive_dir: str | None,
     execute: bool,
     pinned: bool,
 ) -> int:
-    root = Path(project)
+    try:
+        root = _resolve_clean_project_root(project_or_id, project)
+    except ValueError as exc:
+        print(f"error: {exc}")
+        return 1
+
     plan = plan_cleanup(root, Path(build_dir) if build_dir else None)
     dry_run = not execute
     result = execute_cleanup(
@@ -384,9 +459,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "events":
         return _cmd_events(args.process)
     if args.command == "projects":
-        return _cmd_projects(args.pin, args.unpin)
+        return _cmd_projects(args.pin, args.unpin, args.remove, args.prune_missing)
     if args.command == "clean":
-        return _cmd_clean(args.project, args.build_dir, args.archive_dir, args.execute, args.pinned)
+        return _cmd_clean(args.project_or_id, args.project, args.build_dir, args.archive_dir, args.execute, args.pinned)
     if args.command == "proxy-run":
         return _cmd_proxy_run(args.cmake_args)
     if args.command == "show-config":

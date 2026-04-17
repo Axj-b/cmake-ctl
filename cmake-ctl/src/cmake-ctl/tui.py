@@ -545,19 +545,42 @@ def _action_events(state: UiState) -> None:
 
 
 def _action_projects(state: UiState) -> None:
+    def _resolve_key_from_id_or_key(token: str, rows: list[dict]) -> str:
+        value = token.strip()
+        if not value:
+            raise ValueError("Project ID/key is required")
+        if value.isdigit():
+            idx = int(value)
+            if 1 <= idx <= len(rows):
+                return str(rows[idx - 1]["project_key"])
+        return value
+
     sub_action = _ask("projects action: list/pin/unpin", "list").lower()
+    rows = list_projects()
+
     if sub_action == "pin":
-        key = _ask("Project key to pin")
-        if key:
+        token = _ask("Project ID or key to pin")
+        if token:
+            try:
+                key = _resolve_key_from_id_or_key(token, rows)
+            except ValueError as exc:
+                _log(state, _colorize(f"error: {exc}", _RED))
+                return
             set_pinned(key, True)
             _log(state, _colorize(f"Pinned: {key}", _GREEN))
+            rows = list_projects()
     elif sub_action == "unpin":
-        key = _ask("Project key to unpin")
-        if key:
+        token = _ask("Project ID or key to unpin")
+        if token:
+            try:
+                key = _resolve_key_from_id_or_key(token, rows)
+            except ValueError as exc:
+                _log(state, _colorize(f"error: {exc}", _RED))
+                return
             set_pinned(key, False)
             _log(state, _colorize(f"Unpinned: {key}", _YELLOW))
+            rows = list_projects()
 
-    rows = list_projects()
     if not rows:
         _log(state, _colorize("No tracked projects", _YELLOW))
         return
@@ -569,11 +592,67 @@ def _action_projects(state: UiState) -> None:
         gen_str = f"  {_colorize('•', _WHITE)} generator : {_colorize(gen, _WHITE)}" if gen else ""
         _log(state, "")
         _log(state, f"  {_colorize(str(i) + '.', _BOLD + _WHITE)} {_colorize(row['project_key'], _BOLD + _CYAN)}")
+        _log(state, f"  {_colorize('•', _WHITE)} id        : {_colorize(str(i), _WHITE)}")
+        _log(state, f"  {_colorize('•', _WHITE)} project key: {_colorize(row['project_key'], _CYAN)}")
         _log(state, f"  {_colorize('•', _WHITE)} path      : {_colorize(row['path'], _BLUE)}")
         _log(state, f"  {_colorize('•', _WHITE)} cmake     : {_colorize(row['cmake_version'], _MAGENTA)}")
         if gen_str:
             _log(state, gen_str)
         _log(state, f"  {_colorize('•', _WHITE)} status    : {pin_mark}")
+
+
+def _action_projects_with_args(state: UiState, args: list[str]) -> bool:
+    """Handle inline projects subcommands; returns True when handled."""
+    if not args:
+        return False
+
+    rows = list_projects()
+
+    def _resolve_key_from_id_or_key(token: str) -> str:
+        value = token.strip()
+        if not value:
+            raise ValueError("Project ID/key is required")
+        if value.isdigit():
+            idx = int(value)
+            if 1 <= idx <= len(rows):
+                return str(rows[idx - 1]["project_key"])
+        return value
+
+    cmd = args[0].lower()
+    try:
+        if cmd == "pin" and len(args) >= 2:
+            key = _resolve_key_from_id_or_key(args[1])
+            set_pinned(key, True)
+            _log(state, _colorize(f"Pinned: {key}", _GREEN))
+            _action_projects(state)
+            return True
+        if cmd == "unpin" and len(args) >= 2:
+            key = _resolve_key_from_id_or_key(args[1])
+            set_pinned(key, False)
+            _log(state, _colorize(f"Unpinned: {key}", _YELLOW))
+            _action_projects(state)
+            return True
+        if cmd == "remove" and len(args) >= 2:
+            key = _resolve_key_from_id_or_key(args[1])
+            from .database import remove_project
+            removed = remove_project(key)
+            if removed:
+                _log(state, _colorize(f"Removed tracked project: {key}", _GREEN))
+            else:
+                _log(state, _colorize(f"No tracked project found for: {args[1]}", _YELLOW))
+            _action_projects(state)
+            return True
+        if cmd == "prune-missing":
+            from .database import prune_missing_projects
+            removed = prune_missing_projects()
+            _log(state, _colorize(f"Pruned missing project entries: {removed}", _GREEN if removed else _YELLOW))
+            _action_projects(state)
+            return True
+    except ValueError as exc:
+        _log(state, _colorize(f"error: {exc}", _RED))
+        return True
+
+    return False
 
 
 def _action_clean(state: UiState) -> None:
@@ -719,7 +798,9 @@ def run_tui() -> int:
         if not raw:
             continue
 
-        token = raw.split()[0].strip().lower()
+        parts = raw.split()
+        token = parts[0].strip().lower()
+        cmd_args = parts[1:]
         if token.startswith("/"):
             token = token[1:]
 
@@ -734,6 +815,9 @@ def run_tui() -> int:
         action = commands.get(token)
         if action is None:
             _log(state, _colorize("Unknown command. Use /help to see available commands.", _RED))
+            continue
+
+        if token == "projects" and _action_projects_with_args(state, cmd_args):
             continue
 
         _set_status(state, "running")

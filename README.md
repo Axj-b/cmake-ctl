@@ -140,8 +140,8 @@ cmake-ctl list
 cmake-ctl uninstall [version] [--yes]
 cmake-ctl clear-downloads
 cmake-ctl events --process
-cmake-ctl projects [--pin <key> | --unpin <key>]
-cmake-ctl clean [--project <path>] [--build-dir <dir>] [--archive-dir <dir>] [--execute] [--pinned]
+cmake-ctl projects [--pin <id-or-key> | --unpin <id-or-key> | --remove <id-or-key> | --prune-missing]
+cmake-ctl clean [<project-path-or-id>] [--project <path>] [--build-dir <dir>] [--archive-dir <dir>] [--execute] [--pinned]
 cmake-ctl proxy-run -- <cmake args...>
 cmake-ctl show-config [--json]
 cmake-ctl identity-mode [id-file-first|path-only]
@@ -201,6 +201,14 @@ Available TUI commands (type `/command`):
 | `/exit` or `/q` | Quit |
 
 The `/clean` command lets you pick from your tracked projects list, then select individual build directories to delete with arrow keys and space bar.
+
+CLI shortcut: use a tracked project ID from `cmake-ctl projects` directly, for example `cmake-ctl clean 2`.
+
+Maintenance shortcuts:
+- `cmake-ctl projects --pin <id-or-key>` pins one tracked project entry.
+- `cmake-ctl projects --unpin <id-or-key>` unpins one tracked project entry.
+- `cmake-ctl projects --remove <id-or-key>` removes one tracked project entry.
+- `cmake-ctl projects --prune-missing` removes entries whose project paths no longer exist.
 
 ## Create End-User Release Zip
 
