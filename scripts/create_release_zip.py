@@ -71,7 +71,7 @@ def write_cli_launchers(stage_root: Path) -> None:
         "set SCRIPT_DIR=%~dp0\n"
         "set ROOT_DIR=%SCRIPT_DIR%..\n"
         "set PYTHONPATH=%ROOT_DIR%\\python;%PYTHONPATH%\n"
-        "python -m cmake_ctl.cli %*\n",
+        "python -m cmake-ctl.cli %*\n",
         encoding="utf-8",
     )
 
@@ -82,7 +82,7 @@ def write_cli_launchers(stage_root: Path) -> None:
         "SCRIPT_DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"\n"
         "ROOT_DIR=\"$SCRIPT_DIR/..\"\n"
         "export PYTHONPATH=\"$ROOT_DIR/python:${PYTHONPATH:-}\"\n"
-        "exec python -m cmake_ctl.cli \"$@\"\n",
+        "exec python -m cmake-ctl.cli \"$@\"\n",
         encoding="utf-8",
     )
     sh_path.chmod(0o755)
@@ -94,12 +94,12 @@ def stage_release_files(repo_root: Path, stage_root: Path, proxy_binary: Path) -
 
     shutil.copy2(proxy_binary, stage_root / "bin" / proxy_binary.name)
 
-    package_src = repo_root / "cmakectl" / "src" / "cmake_ctl"
+    package_src = repo_root / "cmake-ctl" / "src" / "cmake-ctl"
     if not package_src.exists():
         raise SystemExit(f"Python package path missing: {package_src}")
     shutil.copytree(
         package_src,
-        stage_root / "python" / "cmake_ctl",
+        stage_root / "python" / "cmake-ctl",
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
     )
@@ -109,23 +109,45 @@ def stage_release_files(repo_root: Path, stage_root: Path, proxy_binary: Path) -
         if src.exists():
             shutil.copy2(src, stage_root / file_name)
 
+    # Setup scripts
+    for script_name in ("setup.ps1", "setup.sh"):
+        src = repo_root / script_name
+        if src.exists():
+            dest = stage_root / script_name
+            shutil.copy2(src, dest)
+            if script_name.endswith(".sh"):
+                dest.chmod(0o755)
+
     notes_path = stage_root / "USAGE.txt"
     notes_path.write_text(
         "cmake-ctl release package\n"
         "\n"
-        "Contents:\n"
-        "- bin/cmake(.exe): cmake proxy executable\n"
-        "- python/cmake_ctl: Python CLI package source\n"
-        "- bin/cmake-ctl(.bat): helper launchers\n"
+        "Quick setup (recommended):\n"
+        "Windows PowerShell:\n"
+        "  .\\setup.ps1              # add bin\\ to PATH\n"
+        "  .\\setup.ps1 -VSCode      # also configure VSCode cmake path\n"
+        "  .\\setup.ps1 -Uninstall   # undo changes\n"
         "\n"
-        "Usage examples:\n"
+        "Linux/macOS:\n"
+        "  ./setup.sh               # add bin/ to PATH\n"
+        "  ./setup.sh --vscode      # also configure VSCode cmake path\n"
+        "  ./setup.sh --uninstall   # undo changes\n"
+        "\n"
+        "Manual setup:\n"
         "Windows:\n"
         "  set PATH=%CD%\\bin;%PATH%\n"
         "  bin\\cmake-ctl.bat list\n"
         "\n"
         "Linux/macOS:\n"
         "  export PATH=\"$PWD/bin:$PATH\"\n"
-        "  bin/cmake-ctl list\n",
+        "  bin/cmake-ctl list\n"
+        "\n"
+        "Contents:\n"
+        "- bin/cmake(.exe): cmake proxy executable\n"
+        "- python/cmake-ctl: Python CLI package source\n"
+        "- bin/cmake-ctl(.bat): helper launchers\n"
+        "- setup.ps1: Windows setup script\n"
+        "- setup.sh: Linux/macOS setup script\n",
         encoding="utf-8",
     )
 

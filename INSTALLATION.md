@@ -43,16 +43,16 @@ $env:PATH = "~/.cmake-ctl\bin;$env:PATH"
 
 1. **Verify Installation**
 ```powershell
-cd ~/.cmake-ctl\cmakectl
+cd ~/.cmake-ctl\cmake-ctl
 $env:PYTHONPATH = "src;tests"
-python -m cmake_ctl.cli list
+python -m cmake-ctl.cli list
 # Output: * 4.3.1
 ```
 
 2. **Use cmake-ctl Commands**
 ```powershell
 # Set as default (already done)
-python -m cmake_ctl.cli resolve
+python -m cmake-ctl.cli resolve
 
 # Create a project with cmake
 mkdir my-project
@@ -94,8 +94,8 @@ All cmake invocations are logged to: `~/.cmake-ctl/events/cmake_invocations.ndjs
 
 ## Files Modified
 
-- `cmakectl/src/cmake_ctl/installer.py` - Added `install_from_archive()` for local ZIP extraction
-- `cmakectl/src/cmake_ctl/cli.py` - Added `install-archive` command
+- `cmake-ctl/src/cmake-ctl/installer.py` - Added `install_from_archive()` for local ZIP extraction
+- `cmake-ctl/src/cmake-ctl/cli.py` - Added `install-archive` command
 - `src/proxy/proxy.cpp` - Enhanced version resolution and recursion handling
 - `bin/cmake.exe` - Rebuilt with improved resolver
 

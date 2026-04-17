@@ -1,0 +1,7 @@
+{
+  "cmake.cmakePath": "${workspaceFolder}/bin/cmake.exe",
+  "cmake.configureSettings": {
+    "CMAKE_PROJECT_NAME": "cmakectl"
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe"
+}

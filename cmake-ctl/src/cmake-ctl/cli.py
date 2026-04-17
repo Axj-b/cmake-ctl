@@ -21,6 +21,7 @@ from .resolver import (
 from .source_discovery import discover_source_dir
 from .session_store import SessionStore, current_session_id
 from .tui import run_tui
+from .vscode_setup import apply_vscode_settings, remove_vscode_settings
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -48,6 +49,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("list", help="List installed versions")
 
+    uninstall_parser = sub.add_parser("uninstall", help="Remove an installed cmake version")
+    uninstall_parser.add_argument("version", nargs="?", help="Version to remove (interactive if omitted)")
+    uninstall_parser.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
+
+    sub.add_parser("clear-downloads", help="Delete all cached download archives")
+
     events_parser = sub.add_parser("events", help="Process proxy event queue")
     events_parser.add_argument("--process", action="store_true", help="Process queued events")
 
@@ -69,6 +76,10 @@ def _build_parser() -> argparse.ArgumentParser:
     show_parser.add_argument("--json", action="store_true", help="Print raw JSON-like dict")
 
     sub.add_parser("tui", help="Launch interactive terminal UI")
+
+    setup_vscode_parser = sub.add_parser("setup-vscode", help="Write cmake.cmakePath into VSCode user settings.json")
+    setup_vscode_parser.add_argument("--settings", default=None, help="Path to settings.json (auto-detected if omitted)")
+    setup_vscode_parser.add_argument("--remove", action="store_true", help="Remove cmake.cmakePath from VSCode settings")
 
     mode_parser = sub.add_parser("identity-mode", help="Get or set identity mode")
     mode_parser.add_argument("mode", nargs="?", choices=["id-file-first", "path-only"], help="Identity mode")
@@ -242,6 +253,86 @@ def _cmd_show_config(raw: bool) -> int:
     return 0
 
 
+def _cmd_setup_vscode(settings: str | None, remove: bool) -> int:
+    from pathlib import Path as _Path
+    settings_path = _Path(settings) if settings else None
+    try:
+        if remove:
+            result_path = remove_vscode_settings(settings_path)
+            if result_path:
+                print(f"Removed cmake.cmakePath from {result_path}")
+            else:
+                print("cmake.cmakePath was not set or settings file not found")
+        else:
+            result_path, proxy = apply_vscode_settings(settings_path)
+            print(f"cmake.cmakePath = {proxy}")
+            print(f"Written to: {result_path}")
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"error: {exc}")
+        return 1
+    return 0
+
+
+def _cmd_uninstall(version: str | None, yes: bool) -> int:
+    from .paths import VERSIONS_DIR
+    from .resolver import is_installed_version
+
+    if not version:
+        versions = sorted([p.name for p in VERSIONS_DIR.iterdir() if p.is_dir()]) if VERSIONS_DIR.exists() else []
+        if not versions:
+            print("No versions installed")
+            return 0
+        print("Installed versions:")
+        for v in versions:
+            print(f"  {v}")
+        version = input("Version to remove: ").strip()
+        if not version:
+            print("Aborted")
+            return 0
+
+    if not is_installed_version(version):
+        print(f"Version not installed: {version}")
+        return 1
+
+    target = VERSIONS_DIR / version
+    if not yes:
+        confirm = input(f"Remove {target}? [y/N]: ").strip().lower()
+        if confirm not in {"y", "yes"}:
+            print("Aborted")
+            return 0
+
+    import shutil
+    shutil.rmtree(target)
+    print(f"Removed: {version}")
+
+    # Clear from global config if it was the active version
+    config = load_config()
+    if config.global_version == version:
+        config.global_version = None
+        save_config(config)
+        print("Cleared global_version (was set to the removed version)")
+    return 0
+
+
+def _cmd_clear_downloads() -> int:
+    from .paths import DOWNLOADS_DIR
+    import shutil
+    if not DOWNLOADS_DIR.exists() or not any(DOWNLOADS_DIR.iterdir()):
+        print("Downloads folder is already empty")
+        return 0
+    files = list(DOWNLOADS_DIR.iterdir())
+    total = sum(f.stat().st_size for f in files if f.is_file())
+    print(f"{len(files)} file(s), {total / (1024*1024):.1f} MB")
+    confirm = input("Delete all downloads? [y/N]: ").strip().lower()
+    if confirm not in {"y", "yes"}:
+        print("Aborted")
+        return 0
+    shutil.rmtree(DOWNLOADS_DIR)
+    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    print("Downloads folder cleared")
+    return 0
+
+
 def _cmd_identity_mode(mode: str | None) -> int:
     config = load_config()
     if mode is None:
@@ -280,8 +371,14 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_show_config(args.json)
     if args.command == "identity-mode":
         return _cmd_identity_mode(args.mode)
+    if args.command == "uninstall":
+        return _cmd_uninstall(args.version, args.yes)
+    if args.command == "clear-downloads":
+        return _cmd_clear_downloads()
     if args.command == "tui":
         return run_tui()
+    if args.command == "setup-vscode":
+        return _cmd_setup_vscode(args.settings, args.remove)
 
     parser.error(f"Unknown command: {args.command}")
     return 2

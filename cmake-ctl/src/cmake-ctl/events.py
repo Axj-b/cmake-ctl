@@ -167,7 +167,9 @@ def _normalize_event_doc(doc: dict, raw_line: str) -> tuple[str, int, str, dict]
         event_id = "legacy-" + hashlib.sha1(stable.encode("utf-8")).hexdigest()
         payload = {
             "project_path": source_dir,
+            "source_dir": source_dir,
             "build_dir": build_dir,
+            "cwd": source_dir,
             "argv": argv,
             "resolved_version": "",
             "source": "legacy-proxy",

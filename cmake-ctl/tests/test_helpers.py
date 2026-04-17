@@ -7,17 +7,17 @@ from contextlib import contextmanager
 from pathlib import Path
 
 MODULES = [
-    "cmake_ctl.paths",
-    "cmake_ctl.config_store",
-    "cmake_ctl.identity",
-    "cmake_ctl.session_store",
-    "cmake_ctl.resolver",
-    "cmake_ctl.events",
-    "cmake_ctl.database",
-    "cmake_ctl.cleaner",
-    "cmake_ctl.installer",
-    "cmake_ctl.proxy",
-    "cmake_ctl.source_discovery",
+    "cmake-ctl.paths",
+    "cmake-ctl.config_store",
+    "cmake-ctl.identity",
+    "cmake-ctl.session_store",
+    "cmake-ctl.resolver",
+    "cmake-ctl.events",
+    "cmake-ctl.database",
+    "cmake-ctl.cleaner",
+    "cmake-ctl.installer",
+    "cmake-ctl.proxy",
+    "cmake-ctl.source_discovery",
 ]
 
 

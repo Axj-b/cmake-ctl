@@ -25,7 +25,7 @@ class SourceDiscoveryAndProxyTests(unittest.TestCase):
                 '{"version":4,"configurePresets":[{"name":"dev","sourceDir":"."}]}'
             )
 
-            from cmake_ctl.source_discovery import discover_source_dir
+            from cmake-ctl.source_discovery import discover_source_dir
 
             self.assertEqual(discover_source_dir(["-S", str(src)], cwd=root), src.resolve())
             self.assertEqual(discover_source_dir(["--preset", "dev"], cwd=src), src.resolve())
@@ -33,9 +33,9 @@ class SourceDiscoveryAndProxyTests(unittest.TestCase):
 
     def test_proxy_uses_absolute_managed_path_and_recursion_guard(self):
         with isolated_home():
-            from cmake_ctl.config_store import Config, save_config
-            from cmake_ctl.paths import VERSIONS_DIR
-            from cmake_ctl.proxy import RECURSION_ENV, ProxyError, resolve_cmake_executable, run_proxy
+            from cmake-ctl.config_store import Config, save_config
+            from cmake-ctl.paths import VERSIONS_DIR
+            from cmake-ctl.proxy import RECURSION_ENV, ProxyError, resolve_cmake_executable, run_proxy
 
             ver = "3.28.1"
             exe_dir = VERSIONS_DIR / ver / "bin"
@@ -52,7 +52,7 @@ class SourceDiscoveryAndProxyTests(unittest.TestCase):
                 self.assertTrue(resolved.is_absolute())
                 self.assertEqual(version, ver)
 
-                with mock.patch("cmake_ctl.proxy.subprocess.run") as run_mock:
+                with mock.patch("cmake-ctl.proxy.subprocess.run") as run_mock:
                     run_mock.return_value.returncode = 7
                     rc = run_proxy(["--version"], project_path=proj)
                     self.assertEqual(rc, 7)
