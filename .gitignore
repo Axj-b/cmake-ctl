@@ -163,3 +163,7 @@ x86/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+### cmake-ctl
+# Temporary tracking directories
+tmp-track*/
