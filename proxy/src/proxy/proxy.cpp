@@ -11,6 +11,10 @@
 #include <algorithm>
 #include <cctype>
 
+#ifdef _WIN32
+#include <process.h>
+#endif
+
 #define CMAKE_CTL_PROXY_VERSION "0.1.0"
 
 #ifndef _WIN32
@@ -353,6 +357,53 @@ std::string read_cmake_ctl_version(const std::string& config_path) {
     return CMAKE_CTL_PROXY_VERSION;
 }
 
+#ifndef _WIN32
+std::string shell_quote_arg(const std::string& arg) {
+    std::string out = "\"";
+    for (char c : arg) {
+        if (c == '\\' || c == '"') {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+#endif
+
+int execute_tool(const std::string& tool_exe, const std::vector<std::string>& tool_args) {
+#ifdef _WIN32
+    std::vector<std::string> argv_storage;
+    argv_storage.reserve(tool_args.size() + 1);
+    argv_storage.push_back(tool_exe);
+    for (const auto& arg : tool_args) {
+        argv_storage.push_back(arg);
+    }
+
+    std::vector<const char*> argv;
+    argv.reserve(argv_storage.size() + 1);
+    for (const auto& value : argv_storage) {
+        argv.push_back(value.c_str());
+    }
+    argv.push_back(nullptr);
+
+    int result = _spawnv(_P_WAIT, tool_exe.c_str(), argv.data());
+    if (result == -1) {
+        std::cerr << "Error: failed to execute proxied tool: " << tool_exe << std::endl;
+        return 1;
+    }
+    return result;
+#else
+    std::string command = shell_quote_arg(tool_exe);
+    for (const auto& arg : tool_args) {
+        command += " ";
+        command += shell_quote_arg(arg);
+    }
+    int result = std::system(command.c_str());
+    return WIFEXITED(result) ? WEXITSTATUS(result) : result;
+#endif
+}
+
 int main(int argc, char* argv[]) {
     std::string tool_name = tool_from_argv0(argc > 0 ? argv[0] : nullptr);
     std::string cmake_ctl_home = get_cmake_ctl_home();
@@ -438,20 +489,6 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    // Build command to execute
-    std::string command = "\"" + tool_exe + "\"";
-    for (const auto& arg : cmake_args) {
-        command += " \"" + arg + "\"";
-    }
-    
-    // Execute cmake with passthrough
-    int result = std::system(command.c_str());
-    
-    // On Windows, system() returns the exit code directly
-    // On Unix, we need to use WIFEXITED and WEXITSTATUS macros
-#ifdef _WIN32
-    return result;
-#else
-    return WIFEXITED(result) ? WEXITSTATUS(result) : result;
-#endif
+    // Execute proxied tool with argument passthrough.
+    return execute_tool(tool_exe, cmake_args);
 }
