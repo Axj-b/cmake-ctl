@@ -35,7 +35,7 @@ def main() -> int:
     package_name = f"cmake-ctl-{version}-{platform}"
 
     if not args.skip_build:
-        run_build_or_reuse_existing(repo_root)
+        run_build_or_reuse_existing(repo_root, release_version=version)
 
     proxy_binary = require_proxy_binary(repo_root)
 

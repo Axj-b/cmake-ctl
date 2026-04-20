@@ -12,10 +12,15 @@
 #include <cctype>
 
 #ifdef _WIN32
-#include <process.h>
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
 #endif
 
+#ifndef CMAKE_CTL_PROXY_VERSION
 #define CMAKE_CTL_PROXY_VERSION "0.1.0"
+#endif
 
 #ifndef _WIN32
 #include <sys/wait.h>
@@ -373,26 +378,80 @@ std::string shell_quote_arg(const std::string& arg) {
 
 int execute_tool(const std::string& tool_exe, const std::vector<std::string>& tool_args) {
 #ifdef _WIN32
-    std::vector<std::string> argv_storage;
-    argv_storage.reserve(tool_args.size() + 1);
-    argv_storage.push_back(tool_exe);
+    auto quote_windows_arg = [](const std::string& arg) {
+        if (arg.empty()) {
+            return std::string("\"\"");
+        }
+        if (arg.find_first_of(" \t\n\v\"") == std::string::npos) {
+            return arg;
+        }
+
+        std::string out = "\"";
+        size_t backslashes = 0;
+        for (char c : arg) {
+            if (c == '\\') {
+                ++backslashes;
+                continue;
+            }
+            if (c == '"') {
+                out.append(backslashes * 2 + 1, '\\');
+                out += '"';
+                backslashes = 0;
+                continue;
+            }
+            out.append(backslashes, '\\');
+            backslashes = 0;
+            out += c;
+        }
+        out.append(backslashes * 2, '\\');
+        out += '"';
+        return out;
+    };
+
+    std::string command_line = quote_windows_arg(tool_exe);
     for (const auto& arg : tool_args) {
-        argv_storage.push_back(arg);
+        command_line += " ";
+        command_line += quote_windows_arg(arg);
     }
 
-    std::vector<const char*> argv;
-    argv.reserve(argv_storage.size() + 1);
-    for (const auto& value : argv_storage) {
-        argv.push_back(value.c_str());
-    }
-    argv.push_back(nullptr);
+    STARTUPINFOA startup_info;
+    std::memset(&startup_info, 0, sizeof(startup_info));
+    startup_info.cb = sizeof(startup_info);
 
-    int result = _spawnv(_P_WAIT, tool_exe.c_str(), argv.data());
-    if (result == -1) {
-        std::cerr << "Error: failed to execute proxied tool: " << tool_exe << std::endl;
+    PROCESS_INFORMATION process_info;
+    std::memset(&process_info, 0, sizeof(process_info));
+
+    std::vector<char> mutable_cmd(command_line.begin(), command_line.end());
+    mutable_cmd.push_back('\0');
+
+    BOOL ok = CreateProcessA(
+        tool_exe.c_str(),
+        mutable_cmd.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        0,
+        nullptr,
+        nullptr,
+        &startup_info,
+        &process_info
+    );
+    if (!ok) {
+        DWORD error_code = GetLastError();
+        std::cerr << "Error: failed to execute proxied tool: " << tool_exe
+                  << " (Win32 error " << error_code << ")" << std::endl;
         return 1;
     }
-    return result;
+
+    WaitForSingleObject(process_info.hProcess, INFINITE);
+    DWORD exit_code = 1;
+    if (!GetExitCodeProcess(process_info.hProcess, &exit_code)) {
+        exit_code = 1;
+    }
+
+    CloseHandle(process_info.hThread);
+    CloseHandle(process_info.hProcess);
+    return static_cast<int>(exit_code);
 #else
     std::string command = shell_quote_arg(tool_exe);
     for (const auto& arg : tool_args) {

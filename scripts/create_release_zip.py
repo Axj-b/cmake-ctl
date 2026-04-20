@@ -41,21 +41,56 @@ def infer_version(explicit: str | None) -> str:
     return "dev"
 
 
-def run_build(repo_root: Path) -> None:
+def normalize_version_tag(value: str) -> str:
+    cleaned = value.strip().replace("/", "-")
+    if cleaned.lower().startswith("refs/tags/"):
+        cleaned = cleaned[10:]
+    if cleaned.startswith("v") and len(cleaned) > 1 and cleaned[1].isdigit():
+        return cleaned[1:]
+    return cleaned
+
+
+def write_python_cli_version(repo_root: Path, version: str) -> None:
+    init_path = repo_root / "cmake-ctl" / "src" / "cmake-ctl" / "__init__.py"
+    if not init_path.exists():
+        raise SystemExit(f"Missing file: {init_path}")
+
+    lines = init_path.read_text(encoding="utf-8").splitlines()
+    updated = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("__version__ = "):
+            lines[i] = f'__version__ = "{version}"'
+            updated = True
+            break
+
+    if not updated:
+        raise SystemExit(f"Could not find __version__ assignment in {init_path}")
+
+    init_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def run_build(repo_root: Path, release_version: str | None = None) -> None:
+    release_version = release_version or infer_version(None)
+    proxy_version = normalize_version_tag(release_version)
+    write_python_cli_version(repo_root, proxy_version)
+    env = os.environ.copy()
+    env["CMAKE_CTL_PROXY_VERSION"] = proxy_version
+
     if os.name == "nt":
         command = ["cmd", "/c", str(repo_root / "build.bat")]
     else:
         command = ["bash", str(repo_root / "build.sh")]
 
-    result = subprocess.run(command, cwd=repo_root, check=False)
+    result = subprocess.run(command, cwd=repo_root, env=env, check=False)
     if result.returncode != 0:
         raise SystemExit(f"Build failed with exit code {result.returncode}")
 
 
-def run_build_or_reuse_existing(repo_root: Path) -> None:
+def run_build_or_reuse_existing(repo_root: Path, release_version: str | None = None) -> None:
     """Try to build proxies, but fall back to existing artifacts when possible."""
     try:
-        run_build(repo_root)
+        run_build(repo_root, release_version=release_version)
         return
     except SystemExit as exc:
         try:
@@ -206,7 +241,7 @@ def main() -> int:
     package_name = f"cmake-ctl-{version}-{platform}"
 
     if not args.skip_build:
-        run_build_or_reuse_existing(repo_root)
+        run_build_or_reuse_existing(repo_root, release_version=version)
 
     proxy_binary = require_proxy_binary(repo_root)
 

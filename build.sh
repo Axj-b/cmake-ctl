@@ -8,6 +8,7 @@ BUILD_DIR="$SCRIPT_DIR/build"
 SOURCE_FILE="$SCRIPT_DIR/proxy/src/proxy/proxy.cpp"
 OUTPUT_FILE="$SCRIPT_DIR/bin/cmake"
 TOOLS=(ctest cpack ccmake cmake-gui)
+PROXY_VERSION="${CMAKE_CTL_PROXY_VERSION:-0.1.0}"
 
 link_tools() {
     for tool in "${TOOLS[@]}"; do
@@ -24,7 +25,7 @@ mkdir -p "$SCRIPT_DIR/bin"
 build_with_compiler() {
     local compiler="$1"
     echo "Using $compiler compiler..."
-    "$compiler" -std=c++17 -O2 "$SOURCE_FILE" -o "$OUTPUT_FILE"
+    "$compiler" -std=c++17 -O2 -DCMAKE_CTL_PROXY_VERSION=\"$PROXY_VERSION\" "$SOURCE_FILE" -o "$OUTPUT_FILE"
     chmod +x "$OUTPUT_FILE"
     link_tools
     echo "Built cmake proxy to $OUTPUT_FILE"
@@ -32,7 +33,7 @@ build_with_compiler() {
 
 # Configure and build
 if command -v cmake >/dev/null 2>&1; then
-    if cmake .. && cmake --build . --config Release; then
+    if cmake -DCMAKE_CTL_PROXY_VERSION="$PROXY_VERSION" .. && cmake --build . --config Release; then
         # Copy executable to bin directory as cmake
         if [ -f "proxy/cmake-ctl-proxy" ]; then
             cp "proxy/cmake-ctl-proxy" "$OUTPUT_FILE"

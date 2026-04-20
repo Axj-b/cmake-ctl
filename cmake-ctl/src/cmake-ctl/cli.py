@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .cleaner import execute_cleanup, plan_cleanup
+from . import __version__
 from .config_store import load_config, save_config
 from .database import list_projects, prune_missing_projects, remove_project, set_pinned
 from .events import process_events
@@ -39,6 +40,7 @@ def _colorize(text: str, code: str) -> str:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cmake-ctl")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     use_parser = sub.add_parser("use", help="Set global/project/session version")
