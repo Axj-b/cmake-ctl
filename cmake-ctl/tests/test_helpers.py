@@ -16,7 +16,7 @@ MODULES = [
     "cmake-ctl.database",
     "cmake-ctl.cleaner",
     "cmake-ctl.installer",
-    "cmake-ctl.proxy",
+    "cmake-ctl.native_proxy",
     "cmake-ctl.source_discovery",
 ]
 

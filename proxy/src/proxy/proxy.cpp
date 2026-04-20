@@ -9,6 +9,9 @@
 #include <chrono>
 #include <iomanip>
 #include <algorithm>
+#include <cctype>
+
+#define CMAKE_CTL_PROXY_VERSION "0.1.0"
 
 #ifndef _WIN32
 #include <sys/wait.h>
@@ -147,6 +150,55 @@ bool version_greater_than(const std::string& lhs, const std::string& rhs) {
     return false;
 }
 
+std::string to_lower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return value;
+}
+
+std::string tool_from_argv0(const char* argv0) {
+    if (argv0 == nullptr || std::strlen(argv0) == 0) {
+        return "cmake";
+    }
+    std::string stem = fs::path(argv0).stem().string();
+    if (stem.empty()) {
+        return "cmake";
+    }
+    std::string tool = to_lower(stem);
+    if (
+        tool == "cmake" ||
+        tool == "ctest" ||
+        tool == "cpack" ||
+        tool == "ccmake" ||
+        tool == "cmake-gui" ||
+        tool == "cmcldeps"
+    ) {
+        return tool;
+    }
+    return "cmake";
+}
+
+std::string find_tool_in_version(const std::string& versions_dir, const std::string& version, const std::string& tool_name) {
+    fs::path base = fs::path(versions_dir) / version / "bin";
+    std::vector<std::string> names;
+#ifdef _WIN32
+    names = {tool_name + ".exe", tool_name};
+#else
+    names = {tool_name};
+#endif
+    for (const auto& name : names) {
+        fs::path candidate = base / name;
+        try {
+            if (fs::exists(candidate)) {
+                return fs::canonical(candidate).string();
+            }
+        } catch (...) {
+        }
+    }
+    return "";
+}
+
 // Emit event to NDJSON file
 void emit_event(const std::string& source_dir, const std::string& build_dir, 
                 const std::vector<std::string>& args) {
@@ -201,8 +253,8 @@ void emit_event(const std::string& source_dir, const std::string& build_dir,
     }
 }
 
-// Resolve cmake executable path from cmake-ctl managed versions
-std::string resolve_cmake_executable() {
+// Resolve proxied executable path from cmake-ctl managed versions
+std::string resolve_tool_executable(const std::string& tool_name) {
     std::string cmake_ctl_home = get_cmake_ctl_home();
     std::string versions_dir = cmake_ctl_home + "/versions";
     std::string config_path = cmake_ctl_home + "/config.json";
@@ -237,23 +289,12 @@ std::string resolve_cmake_executable() {
         }
     } catch (...) {}
     
-    // If we got a valid version from config, try to use it
+    // If we got a valid version from config, try to use it.
     if (!default_version.empty() && default_version[0] != '{' && default_version[0] != '[') {
-        // Try Unix-style path first
-        std::string cmake_path = versions_dir + "/" + default_version + "/bin/cmake.exe";
-        try {
-            if (fs::exists(cmake_path)) {
-                return fs::canonical(cmake_path).string();
-            }
-        } catch (...) {}
-        
-        // Try with forward slashes converted for Windows
-        cmake_path = versions_dir + "\\" + default_version + "\\bin\\cmake.exe";
-        try {
-            if (fs::exists(cmake_path)) {
-                return fs::canonical(cmake_path).string();
-            }
-        } catch (...) {}
+        std::string managed = find_tool_in_version(versions_dir, default_version, tool_name);
+        if (!managed.empty()) {
+            return managed;
+        }
     }
     
     // If no version configured or not found, try to find latest installed
@@ -271,28 +312,60 @@ std::string resolve_cmake_executable() {
         }
         
         if (!latest.empty()) {
-            std::string cmake_path = versions_dir + "/" + latest + "/bin/cmake.exe";
-            try {
-                if (fs::exists(cmake_path)) {
-                    return fs::canonical(cmake_path).string();
-                }
-            } catch (...) {}
+            std::string managed = find_tool_in_version(versions_dir, latest, tool_name);
+            if (!managed.empty()) {
+                return managed;
+            }
         }
     } catch (...) {}
     
-    // No managed version found - fallback to system cmake
-    return "cmake";
+    // No managed version found - fallback to system tool.
+    return tool_name;
+}
+
+std::string read_cmake_ctl_version(const std::string& config_path) {
+    try {
+        std::ifstream config_file(config_path);
+        if (!config_file.is_open()) {
+            return CMAKE_CTL_PROXY_VERSION;
+        }
+        std::stringstream buffer;
+        buffer << config_file.rdbuf();
+        std::string content = buffer.str();
+        size_t pos = content.find("\"cli_version\"");
+        if (pos != std::string::npos) {
+            size_t colon_pos = content.find(":", pos);
+            if (colon_pos != std::string::npos) {
+                size_t start = content.find("\"", colon_pos);
+                if (start != std::string::npos) {
+                    size_t end = content.find("\"", start + 1);
+                    if (end != std::string::npos && end > start) {
+                        std::string value = content.substr(start + 1, end - start - 1);
+                        if (!value.empty()) {
+                            return value;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (...) {
+    }
+    return CMAKE_CTL_PROXY_VERSION;
 }
 
 int main(int argc, char* argv[]) {
-    // Resolve cmake executable FIRST (before recursion check)
-    std::string cmake_exe = resolve_cmake_executable();
+    std::string tool_name = tool_from_argv0(argc > 0 ? argv[0] : nullptr);
+    std::string cmake_ctl_home = get_cmake_ctl_home();
+    std::string config_path = cmake_ctl_home + "/config.json";
+
+    // Resolve managed executable FIRST (before recursion check)
+    std::string tool_exe = resolve_tool_executable(tool_name);
     
     // Check for actual recursion: resolved path equals our own path
     std::string our_path;
     try {
         our_path = fs::canonical(argv[0]).string();
-        std::string resolved_canonical = fs::canonical(cmake_exe).string();
+        std::string resolved_canonical = fs::canonical(tool_exe).string();
         
         // If they're the same, we'd be calling ourselves - that's recursion
         if (our_path == resolved_canonical) {
@@ -305,7 +378,6 @@ int main(int argc, char* argv[]) {
     
     // Set recursion guard for child processes
     set_env("CMAKE_CTL_PROXY_ACTIVE", "1");
-    set_env("CMAKE_CTL_PROXY_ACTIVE", "1");
     
     // Collect arguments (skip program name)
     std::vector<std::string> cmake_args;
@@ -317,16 +389,37 @@ int main(int argc, char* argv[]) {
     std::string source_dir = discover_source_dir(cmake_args);
     std::string build_dir = discover_build_dir(cmake_args);
     
-    // Emit event
-    emit_event(source_dir, build_dir, cmake_args);
+    if (tool_name == "cmake") {
+        emit_event(source_dir, build_dir, cmake_args);
+    }
+
+    std::string resolved_version = "unknown";
+    fs::path tool_path(tool_exe);
+    if (tool_path.is_absolute()) {
+        fs::path parent = tool_path.parent_path();
+        if (parent.filename() == "bin") {
+            fs::path version_dir = parent.parent_path();
+            std::string version_name = version_dir.filename().string();
+            if (!version_name.empty()) {
+                resolved_version = version_name;
+            }
+        }
+    }
+
+    std::cerr
+        << "[cmake-ctl "
+        << read_cmake_ctl_version(config_path)
+        << "] "
+        << tool_name
+        << " -> CMake "
+        << resolved_version
+        << std::endl;
     
-    // If using fallback "cmake", remove proxy bin from PATH to avoid recursion
-    if (cmake_exe == "cmake") {
+    // If using fallback system tool, remove proxy bin from PATH to avoid recursion.
+    if (tool_exe == tool_name) {
         std::string path = get_env("PATH");
-        // Remove cmake-ctl (and legacy cmake-ctl) bin paths from PATH.
+        // Remove cmake-ctl bin path from PATH.
         size_t proxy_bin_pos = path.find("cmake-ctl\\bin");
-        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl/bin");
-        if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl\\bin");
         if (proxy_bin_pos == std::string::npos) proxy_bin_pos = path.find("cmake-ctl/bin");
         if (proxy_bin_pos != std::string::npos) {
             size_t start = proxy_bin_pos;
@@ -346,7 +439,7 @@ int main(int argc, char* argv[]) {
     }
     
     // Build command to execute
-    std::string command = cmake_exe;
+    std::string command = "\"" + tool_exe + "\"";
     for (const auto& arg : cmake_args) {
         command += " \"" + arg + "\"";
     }

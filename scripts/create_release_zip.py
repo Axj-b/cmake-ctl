@@ -19,6 +19,10 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
 
+WINDOWS_PROXY_TOOLS = ["ctest.exe", "cpack.exe", "ccmake.exe", "cmake-gui.exe", "cmcldeps.exe"]
+UNIX_PROXY_TOOLS = ["ctest", "cpack", "ccmake", "cmake-gui"]
+
+
 def detect_platform_tag() -> str:
     if sys.platform.startswith("win"):
         return "windows-x64"
@@ -46,6 +50,19 @@ def run_build(repo_root: Path) -> None:
     result = subprocess.run(command, cwd=repo_root, check=False)
     if result.returncode != 0:
         raise SystemExit(f"Build failed with exit code {result.returncode}")
+
+
+def run_build_or_reuse_existing(repo_root: Path) -> None:
+    """Try to build proxies, but fall back to existing artifacts when possible."""
+    try:
+        run_build(repo_root)
+        return
+    except SystemExit as exc:
+        try:
+            existing = require_proxy_binary(repo_root)
+        except SystemExit:
+            raise exc
+        print(f"Build failed; reusing existing proxy binary: {existing}")
 
 
 def require_proxy_binary(repo_root: Path) -> Path:
@@ -92,7 +109,17 @@ def stage_release_files(repo_root: Path, stage_root: Path, proxy_binary: Path) -
     (stage_root / "bin").mkdir(parents=True, exist_ok=True)
     (stage_root / "python").mkdir(parents=True, exist_ok=True)
 
-    shutil.copy2(proxy_binary, stage_root / "bin" / proxy_binary.name)
+    staged_proxy = stage_root / "bin" / proxy_binary.name
+    shutil.copy2(proxy_binary, staged_proxy)
+
+    if proxy_binary.name.lower().endswith(".exe"):
+        for tool_name in WINDOWS_PROXY_TOOLS:
+            shutil.copy2(staged_proxy, stage_root / "bin" / tool_name)
+    else:
+        for tool_name in UNIX_PROXY_TOOLS:
+            target = stage_root / "bin" / tool_name
+            shutil.copy2(staged_proxy, target)
+            target.chmod(0o755)
 
     package_src = repo_root / "cmake-ctl" / "src" / "cmake-ctl"
     if not package_src.exists():
@@ -144,6 +171,8 @@ def stage_release_files(repo_root: Path, stage_root: Path, proxy_binary: Path) -
         "\n"
         "Contents:\n"
         "- bin/cmake(.exe): cmake proxy executable\n"
+        "- bin/ctest, cpack, ccmake, cmake-gui (+ .exe on Windows): companion proxy executables\n"
+        "- bin/cmcldeps.exe (Windows): companion proxy executable\n"
         "- python/cmake-ctl: Python CLI package source\n"
         "- bin/cmake-ctl(.bat): helper launchers\n"
         "- setup.ps1: Windows setup script\n"
@@ -177,7 +206,7 @@ def main() -> int:
     package_name = f"cmake-ctl-{version}-{platform}"
 
     if not args.skip_build:
-        run_build(repo_root)
+        run_build_or_reuse_existing(repo_root)
 
     proxy_binary = require_proxy_binary(repo_root)
 

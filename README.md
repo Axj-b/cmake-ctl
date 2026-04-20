@@ -8,7 +8,7 @@ It lets you install multiple CMake versions side-by-side and keep normal `cmake`
 
 - Install CMake versions from URL or local archive
 - Resolve versions globally, per project, or per session
-- Transparent proxy executable (`cmake`/`cmake.exe`) — drop-in replacement
+- Transparent proxy executables (`cmake`, `ctest`, `cpack`, `ccmake`, `cmake-gui`; plus `cmcldeps.exe` on Windows) — drop-in replacement
 - Automatic fallback to global/latest version if configured version is missing
 - Event logging and tracked project metadata (auto-populated by proxy)
 - Safe cleanup with interactive target selection, dry-run, and pin-aware behavior
@@ -23,6 +23,11 @@ It lets you install multiple CMake versions side-by-side and keep normal `cmake`
 .
 ├── bin/                         # Runtime entrypoints and proxy artifact
 │   ├── cmake.exe               # Proxy artifact on Windows (cmake on Unix)
+│   ├── ctest(.exe)             # Companion proxy executable
+│   ├── cpack(.exe)             # Companion proxy executable
+│   ├── ccmake(.exe)            # Companion proxy executable
+│   ├── cmake-gui(.exe)         # Companion proxy executable
+│   └── cmcldeps.exe            # Companion proxy executable (Windows)
 │   └── cmake-ctl.bat           # CLI launcher (Windows)
 ├── cmake-ctl/
 │   ├── pyproject.toml
@@ -41,8 +46,9 @@ It lets you install multiple CMake versions side-by-side and keep normal `cmake`
 │   ├── CMakeLists.txt
 │   └── src/proxy/proxy.cpp     # C++ proxy source
 ├── scripts/
-│   └── create_release_zip.py   # End-user zip packaging script
-├── dist/                        # Release zips (generated)
+│   ├── create_release_folder.py # End-user release folder staging script
+│   └── create_release_zip.py    # End-user zip packaging script
+├── dist/                        # Staged releases and zip artifacts (generated)
 ├── CMakeLists.txt
 ├── build.bat                    # Windows build entrypoint
 ├── build.sh                     # Linux/macOS build entrypoint
@@ -105,7 +111,7 @@ Typical contents:
 ./build.sh
 ```
 
-Output: `bin/cmake.exe` (Windows) or `bin/cmake` (Linux/macOS).
+Output: `bin/cmake(.exe)` plus companion proxies for `ctest`, `cpack`, `ccmake`, `cmake-gui` (and `cmcldeps.exe` on Windows).
 
 Compiler fallback (when CMake is not available):
 - Windows: `cl` → `clang++` → `g++`
@@ -211,6 +217,19 @@ Maintenance shortcuts:
 - `cmake-ctl projects --prune-missing` removes entries whose project paths no longer exist.
 
 ## Create End-User Release Zip
+
+First stage the uncompressed release folder (useful for CI/CD assets that do not need zip):
+
+```powershell
+python scripts/create_release_folder.py --version 0.1.0
+```
+
+Output: `dist/cmake-ctl-0.1.0-windows-x64/`
+
+If build tools are unavailable, the script automatically reuses an already-built
+proxy from `bin/` when present.
+
+Then create the zip when needed:
 
 ```powershell
 python scripts/create_release_zip.py --version 0.1.0

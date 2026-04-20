@@ -9,8 +9,8 @@ from .config_store import load_config, save_config
 from .database import list_projects, prune_missing_projects, remove_project, set_pinned
 from .events import process_events
 from .installer import InstallError, construct_release_url, install_version, install_from_archive
+from .native_proxy import run_native_proxy
 from .project_tracker import process_event
-from .proxy import run_proxy
 from .resolver import (
     latest_installed_version,
     reconcile_project_path,
@@ -335,7 +335,7 @@ def _cmd_proxy_run(cmake_args: list[str]) -> int:
     args = cmake_args[:] if cmake_args else []
     if args and args[0] == "--":
         args = args[1:]
-    return run_proxy(args, project_path=Path.cwd())
+    return run_native_proxy(args, project_path=Path.cwd(), tool_name="cmake")
 
 
 def _cmd_show_config(raw: bool) -> int:

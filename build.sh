@@ -7,6 +7,13 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BUILD_DIR="$SCRIPT_DIR/build"
 SOURCE_FILE="$SCRIPT_DIR/proxy/src/proxy/proxy.cpp"
 OUTPUT_FILE="$SCRIPT_DIR/bin/cmake"
+TOOLS=(ctest cpack ccmake cmake-gui)
+
+link_tools() {
+    for tool in "${TOOLS[@]}"; do
+        ln -sf "cmake" "$SCRIPT_DIR/bin/$tool"
+    done
+}
 
 # Create and enter build directory
 mkdir -p "$BUILD_DIR"
@@ -19,6 +26,7 @@ build_with_compiler() {
     echo "Using $compiler compiler..."
     "$compiler" -std=c++17 -O2 "$SOURCE_FILE" -o "$OUTPUT_FILE"
     chmod +x "$OUTPUT_FILE"
+    link_tools
     echo "Built cmake proxy to $OUTPUT_FILE"
 }
 
@@ -29,21 +37,25 @@ if command -v cmake >/dev/null 2>&1; then
         if [ -f "proxy/cmake-ctl-proxy" ]; then
             cp "proxy/cmake-ctl-proxy" "$OUTPUT_FILE"
             chmod +x "$OUTPUT_FILE"
+            link_tools
             echo "Built cmake proxy to $OUTPUT_FILE"
             exit 0
         elif [ -f "proxy/Release/cmake-ctl-proxy" ]; then
             cp "proxy/Release/cmake-ctl-proxy" "$OUTPUT_FILE"
             chmod +x "$OUTPUT_FILE"
+            link_tools
             echo "Built cmake proxy to $OUTPUT_FILE"
             exit 0
         elif [ -f "cmake-ctl-proxy" ]; then
             cp "cmake-ctl-proxy" "$OUTPUT_FILE"
             chmod +x "$OUTPUT_FILE"
+            link_tools
             echo "Built cmake proxy to $OUTPUT_FILE"
             exit 0
         elif [ -f "Release/cmake-ctl-proxy" ]; then
             cp "Release/cmake-ctl-proxy" "$OUTPUT_FILE"
             chmod +x "$OUTPUT_FILE"
+            link_tools
             echo "Built cmake proxy to $OUTPUT_FILE"
             exit 0
         fi

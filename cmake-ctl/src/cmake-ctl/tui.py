@@ -12,8 +12,8 @@ from .config_store import load_config, save_config
 from .database import list_projects, set_pinned
 from .events import process_events
 from .installer import InstallError, construct_release_url, install_from_archive, install_version
+from .native_proxy import run_native_proxy
 from .project_tracker import process_event
-from .proxy import run_proxy
 from .resolver import (
     reconcile_project_path,
     resolve_version,
@@ -719,7 +719,7 @@ def _action_clean(state: UiState) -> None:
 def _action_proxy_run(state: UiState) -> None:
     raw = _ask("cmake args to pass through (space-separated)", "")
     args = raw.split() if raw else []
-    exit_code = run_proxy(args, project_path=Path.cwd())
+    exit_code = run_native_proxy(args, project_path=Path.cwd(), tool_name="cmake")
     exit_color = _GREEN if exit_code == 0 else _RED
     _log(state, _colorize(f"proxy exit code: {exit_code}", exit_color))
 

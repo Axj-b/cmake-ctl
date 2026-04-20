@@ -7,6 +7,7 @@ set SCRIPT_DIR=%~dp0
 set BUILD_DIR=%SCRIPT_DIR%build
 set SOURCE_FILE=%SCRIPT_DIR%proxy\src\proxy\proxy.cpp
 set OUTPUT_FILE=%SCRIPT_DIR%bin\cmake.exe
+set TOOL_LIST=ctest.exe cpack.exe ccmake.exe cmake-gui.exe cmcldeps.exe
 
 if not exist "%SCRIPT_DIR%bin" mkdir "%SCRIPT_DIR%bin"
 
@@ -37,12 +38,19 @@ if !errorlevel! neq 0 (
 )
 
 REM Copy executable to bin directory as cmake.exe
-if exist "Release\cmake-ctl-proxy.exe" (
+if exist "proxy\Release\cmake-ctl-proxy.exe" (
+    copy /Y "proxy\Release\cmake-ctl-proxy.exe" "%OUTPUT_FILE%"
+    for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
+    echo Build complete: %OUTPUT_FILE%
+    exit /b 0
+) else if exist "Release\cmake-ctl-proxy.exe" (
     copy /Y "Release\cmake-ctl-proxy.exe" "%OUTPUT_FILE%"
+    for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
     echo Build complete: %OUTPUT_FILE%
     exit /b 0
 ) else if exist "cmake-ctl-proxy.exe" (
     copy /Y "cmake-ctl-proxy.exe" "%OUTPUT_FILE%"
+    for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
     echo Build complete: %OUTPUT_FILE%
     exit /b 0
 ) else (
@@ -57,6 +65,7 @@ if not errorlevel 1 (
     echo Using MSVC cl compiler...
     cl /nologo /EHsc /std:c++17 "%SOURCE_FILE%" /Fe:"%OUTPUT_FILE%" shell32.lib
     if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
         echo Build complete: %OUTPUT_FILE%
         exit /b 0
     )
@@ -67,6 +76,7 @@ if not errorlevel 1 (
     echo Using clang++ compiler...
     clang++ -std=c++17 -O2 "%SOURCE_FILE%" -o "%OUTPUT_FILE%" -lshell32
     if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
         echo Build complete: %OUTPUT_FILE%
         exit /b 0
     )
@@ -77,6 +87,7 @@ if not errorlevel 1 (
     echo Using g++ compiler...
     g++ -std=c++17 -O2 "%SOURCE_FILE%" -o "%OUTPUT_FILE%" -lshell32
     if !errorlevel! equ 0 if exist "%OUTPUT_FILE%" (
+        for %%T in (%TOOL_LIST%) do copy /Y "%OUTPUT_FILE%" "%SCRIPT_DIR%bin\%%T" >nul
         echo Build complete: %OUTPUT_FILE%
         exit /b 0
     )
