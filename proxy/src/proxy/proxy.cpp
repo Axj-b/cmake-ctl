@@ -8,6 +8,7 @@
 #include <sstream>
 #include <chrono>
 #include <iomanip>
+#include <algorithm>
 
 #ifndef _WIN32
 #include <sys/wait.h>
@@ -111,6 +112,39 @@ std::string json_array_of_strings(const std::vector<std::string>& values) {
     }
     out += "]";
     return out;
+}
+
+std::vector<int> parse_version_parts(const std::string& version) {
+    std::vector<int> parts;
+    std::stringstream ss(version);
+    std::string token;
+    while (std::getline(ss, token, '.')) {
+        try {
+            size_t consumed = 0;
+            int value = std::stoi(token, &consumed);
+            if (consumed != token.size()) {
+                value = 0;
+            }
+            parts.push_back(value);
+        } catch (...) {
+            parts.push_back(0);
+        }
+    }
+    return parts;
+}
+
+bool version_greater_than(const std::string& lhs, const std::string& rhs) {
+    std::vector<int> a = parse_version_parts(lhs);
+    std::vector<int> b = parse_version_parts(rhs);
+    size_t n = std::max(a.size(), b.size());
+    a.resize(n, 0);
+    b.resize(n, 0);
+    for (size_t i = 0; i < n; ++i) {
+        if (a[i] != b[i]) {
+            return a[i] > b[i];
+        }
+    }
+    return false;
 }
 
 // Emit event to NDJSON file
@@ -230,7 +264,7 @@ std::string resolve_cmake_executable() {
                 if (entry.is_directory()) {
                     std::string dirname = entry.path().filename().string();
                     if (dirname[0] != '.' && dirname[0] != '_') { // Skip temp and hidden directories
-                        if (dirname > latest) latest = dirname;
+                        if (latest.empty() || version_greater_than(dirname, latest)) latest = dirname;
                     }
                 }
             }

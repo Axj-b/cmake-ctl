@@ -4,6 +4,7 @@ import hashlib
 import tempfile
 import unittest
 import zipfile
+from importlib import import_module
 from pathlib import Path
 
 from test_helpers import isolated_home
@@ -11,7 +12,10 @@ from test_helpers import isolated_home
 
 class CleanupAndIntegrityTests(unittest.TestCase):
     def test_cleanup_dry_run_and_safety_and_pinned(self):
-        from cmake-ctl.cleaner import CleanupPlan, execute_cleanup, plan_cleanup
+        cleaner_mod = import_module("cmake-ctl.cleaner")
+        CleanupPlan = cleaner_mod.CleanupPlan
+        execute_cleanup = cleaner_mod.execute_cleanup
+        plan_cleanup = cleaner_mod.plan_cleanup
 
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -43,8 +47,12 @@ class CleanupAndIntegrityTests(unittest.TestCase):
 
     def test_installer_checksum_and_atomic_activation(self):
         with isolated_home() as home:
-            from cmake-ctl.installer import InstallError, install_version
-            from cmake-ctl.paths import VERSIONS_DIR
+            installer_mod = import_module("cmake-ctl.installer")
+            paths_mod = import_module("cmake-ctl.paths")
+
+            InstallError = installer_mod.InstallError
+            install_version = installer_mod.install_version
+            VERSIONS_DIR = paths_mod.VERSIONS_DIR
 
             src = home / "artifact.zip"
             with zipfile.ZipFile(src, "w") as zf:
@@ -73,7 +81,7 @@ class CleanupAndIntegrityTests(unittest.TestCase):
     def test_construct_release_url_windows(self):
         from unittest import mock
 
-        from cmake-ctl.installer import construct_release_url
+        construct_release_url = import_module("cmake-ctl.installer").construct_release_url
 
         with mock.patch("platform.system", return_value="Windows"):
             with mock.patch("platform.machine", return_value="AMD64"):

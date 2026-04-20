@@ -4,6 +4,7 @@ import hashlib
 import json
 import platform
 import shutil
+import tarfile
 import urllib.error
 import urllib.request
 import zipfile
@@ -166,13 +167,13 @@ def _extract_and_install(
         if archive_path.suffix.lower() == ".zip":
             if status_callback:
                 status_callback("extract", "Extracting ZIP archive")
-            with zipfile.ZipFile(archive_path, 'r') as zf:
-                zf.extractall(version_dir_tmp)
+            with zipfile.ZipFile(archive_path, "r") as zf:
+                _safe_extract_zip(zf, version_dir_tmp)
         # Handle other archives with shutil
         else:
             if status_callback:
                 status_callback("extract", "Extracting archive")
-            shutil.unpack_archive(archive_path, version_dir_tmp)
+            _safe_extract_archive(archive_path, version_dir_tmp)
     except Exception as exc:
         _remove_tree(version_dir_tmp)
         if status_callback:
@@ -212,3 +213,34 @@ def _remove_tree(path: Path) -> None:
         elif child.is_dir():
             child.rmdir()
     path.rmdir()
+
+
+def _is_within_directory(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def _safe_extract_zip(zf: zipfile.ZipFile, destination: Path) -> None:
+    root = destination.resolve()
+    for member in zf.infolist():
+        member_path = (destination / member.filename).resolve()
+        if not _is_within_directory(member_path, root):
+            raise InstallError(f"Unsafe archive entry: {member.filename}")
+    zf.extractall(destination)
+
+
+def _safe_extract_archive(archive_path: Path, destination: Path) -> None:
+    suffixes = [s.lower() for s in archive_path.suffixes]
+    if any(s in {".tar", ".tgz", ".tbz", ".tbz2", ".txz", ".gz", ".bz2", ".xz"} for s in suffixes):
+        with tarfile.open(archive_path) as tf:
+            root = destination.resolve()
+            for member in tf.getmembers():
+                member_path = (destination / member.name).resolve()
+                if not _is_within_directory(member_path, root):
+                    raise InstallError(f"Unsafe archive entry: {member.name}")
+            tf.extractall(destination)
+        return
+    shutil.unpack_archive(archive_path, destination)

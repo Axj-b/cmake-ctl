@@ -54,6 +54,13 @@ _OPTIONS_WITH_VALUE = {
     "-A", "--platform",
     "-D", "-U",
     "-C",
+    "-S", "--source",
+    "-B", "--build",
+    "--preset",
+    "--install-prefix",
+    "--toolchain",
+    "--project-file",
+    "--trace-source",
     "--log-level",
     "--log-context",
     "-P",
@@ -66,7 +73,11 @@ _OPTIONS_WITH_VALUE = {
 
 def _find_positional_source(argv: list[str]) -> str | None:
     """Return the last bare positional argument that looks like a source path."""
+    if any(flag in argv for flag in ("--build", "--install", "--open")):
+        return None
+
     skip_next = False
+    last_positional: str | None = None
     for token in argv:
         if skip_next:
             skip_next = False
@@ -78,8 +89,8 @@ def _find_positional_source(argv: list[str]) -> str | None:
         if token.startswith("-"):
             continue
         # This token is positional — treat it as the source path candidate.
-        return token
-    return None
+        last_positional = token
+    return last_positional
 
 
 def _resolve_preset_source(cwd: Path, preset_name: str) -> Path | None:

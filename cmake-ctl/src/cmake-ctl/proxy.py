@@ -14,7 +14,7 @@ from .source_discovery import discover_source_dir
 from .session_store import current_session_id
 
 RECURSION_ENV = "CMAKE_CTL_PROXY_ACTIVE"
-LEGACY_RECURSION_ENV = "CMAKE_CTL_PROXY_ACTIVE"
+LEGACY_RECURSION_ENV = "CMAKE_CTL_PROXY_ACTIVE_LEGACY"
 
 
 class ProxyError(RuntimeError):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from importlib import import_module
 from pathlib import Path
 
 from test_helpers import isolated_home
@@ -10,11 +11,19 @@ from test_helpers import isolated_home
 class ResolutionAndIdentityTests(unittest.TestCase):
     def test_resolution_precedence_session_over_project_file_global(self):
         with isolated_home() as home:
-            from cmake-ctl.config_store import Config, save_config
-            from cmake-ctl.identity import ensure_project_id, resolve_project_identity
-            from cmake-ctl.paths import VERSIONS_DIR
-            from cmake-ctl.resolver import resolve_version
-            from cmake-ctl.session_store import SessionStore
+            config_store = import_module("cmake-ctl.config_store")
+            identity_mod = import_module("cmake-ctl.identity")
+            paths_mod = import_module("cmake-ctl.paths")
+            resolver_mod = import_module("cmake-ctl.resolver")
+            session_mod = import_module("cmake-ctl.session_store")
+
+            Config = config_store.Config
+            save_config = config_store.save_config
+            ensure_project_id = identity_mod.ensure_project_id
+            resolve_project_identity = identity_mod.resolve_project_identity
+            VERSIONS_DIR = paths_mod.VERSIONS_DIR
+            resolve_version = resolver_mod.resolve_version
+            SessionStore = session_mod.SessionStore
 
             for v in ["3.25.0", "3.26.0", "3.27.0", "3.28.0"]:
                 (VERSIONS_DIR / v).mkdir(parents=True, exist_ok=True)
@@ -41,10 +50,19 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_project_move_reconciles_path_in_id_file_first_mode(self):
         with isolated_home() as home:
-            from cmake-ctl.config_store import Config, load_config, save_config
-            from cmake-ctl.identity import ensure_project_id, resolve_project_identity
-            from cmake-ctl.paths import VERSIONS_DIR
-            from cmake-ctl.resolver import reconcile_project_path, set_project_version
+            config_store = import_module("cmake-ctl.config_store")
+            identity_mod = import_module("cmake-ctl.identity")
+            paths_mod = import_module("cmake-ctl.paths")
+            resolver_mod = import_module("cmake-ctl.resolver")
+
+            Config = config_store.Config
+            load_config = config_store.load_config
+            save_config = config_store.save_config
+            ensure_project_id = identity_mod.ensure_project_id
+            resolve_project_identity = identity_mod.resolve_project_identity
+            VERSIONS_DIR = paths_mod.VERSIONS_DIR
+            reconcile_project_path = resolver_mod.reconcile_project_path
+            set_project_version = resolver_mod.set_project_version
 
             (VERSIONS_DIR / "3.29.0").mkdir(parents=True, exist_ok=True)
 
@@ -70,9 +88,14 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_global_switch_applies_on_next_invocation(self):
         with isolated_home():
-            from cmake-ctl.config_store import Config, save_config
-            from cmake-ctl.paths import VERSIONS_DIR
-            from cmake-ctl.resolver import resolve_version
+            config_store = import_module("cmake-ctl.config_store")
+            paths_mod = import_module("cmake-ctl.paths")
+            resolver_mod = import_module("cmake-ctl.resolver")
+
+            Config = config_store.Config
+            save_config = config_store.save_config
+            VERSIONS_DIR = paths_mod.VERSIONS_DIR
+            resolve_version = resolver_mod.resolve_version
 
             (VERSIONS_DIR / "3.28.0").mkdir(parents=True, exist_ok=True)
             (VERSIONS_DIR / "3.29.0").mkdir(parents=True, exist_ok=True)
@@ -91,8 +114,12 @@ class ResolutionAndIdentityTests(unittest.TestCase):
 
     def test_missing_managed_version_fails_actionably(self):
         with isolated_home():
-            from cmake-ctl.config_store import Config, save_config
-            from cmake-ctl.resolver import resolve_version
+            config_store = import_module("cmake-ctl.config_store")
+            resolver_mod = import_module("cmake-ctl.resolver")
+
+            Config = config_store.Config
+            save_config = config_store.save_config
+            resolve_version = resolver_mod.resolve_version
 
             with tempfile.TemporaryDirectory() as td:
                 proj = Path(td)

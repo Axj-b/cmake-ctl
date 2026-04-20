@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from importlib import import_module
 from pathlib import Path
 
 from test_helpers import isolated_home
@@ -11,7 +12,10 @@ from test_helpers import isolated_home
 class EventsAndDatabaseTests(unittest.TestCase):
     def test_event_processing_is_idempotent_and_dead_letters_invalid(self):
         with isolated_home() as home:
-            from cmake-ctl.events import Event, append_event, process_events
+            events_mod = import_module("cmake-ctl.events")
+            Event = events_mod.Event
+            append_event = events_mod.append_event
+            process_events = events_mod.process_events
 
             log = home / "events.log"
             dead = home / "dead.log"
@@ -37,15 +41,14 @@ class EventsAndDatabaseTests(unittest.TestCase):
 
     def test_db_wal_migration_retry_and_rollback(self):
         with isolated_home() as home:
-            from cmake-ctl.database import (
-                ProjectRecord,
-                init_db,
-                list_projects,
-                managed_connection,
-                rollback_last_migration,
-                upsert_project,
-                with_write_retry,
-            )
+            database_mod = import_module("cmake-ctl.database")
+            ProjectRecord = database_mod.ProjectRecord
+            init_db = database_mod.init_db
+            list_projects = database_mod.list_projects
+            managed_connection = database_mod.managed_connection
+            rollback_last_migration = database_mod.rollback_last_migration
+            upsert_project = database_mod.upsert_project
+            with_write_retry = database_mod.with_write_retry
 
             init_db()
             with managed_connection() as conn:

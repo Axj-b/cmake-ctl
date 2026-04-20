@@ -44,7 +44,7 @@ class SessionStore:
 
 def current_session_id() -> str:
     # Allow explicit opt-in deterministic session grouping per shell.
-    env_session = os.environ.get("CMAKE_CTL_SESSION_ID") or os.environ.get("CMAKE_CTL_SESSION_ID")
+    env_session = os.environ.get("CMAKE_CTL_SESSION_ID")
     if env_session:
         return env_session
     return f"pid:{os.getppid()}"
